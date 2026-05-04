@@ -98,8 +98,8 @@ cli({
             for (const item of newItems) {
               if (videos.length >= limit) break;
               const v = extractFromItem(item);
-              if (v?.videoId) {
-                videos.push({ rank: videos.length + 1, ...v, url: 'https://www.youtube.com/watch?v=' + v.videoId });
+              if (v?.video_id) {
+                videos.push({ rank: videos.length + 1, ...v, url: 'https://www.youtube.com/watch?v=' + v.video_id });
               }
             }
             contItem = newItems[newItems.length - 1];
