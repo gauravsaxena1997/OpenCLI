@@ -11,6 +11,8 @@
 | `opencli stackoverflow bounties` | Questions with active bounties |
 | `opencli stackoverflow unanswered` | Unanswered questions |
 | `opencli stackoverflow read <id>` | Read a question with answers and comments |
+| `opencli stackoverflow user <name>` | Find users by display name (highest reputation first) |
+| `opencli stackoverflow tag <tag>` | List questions tagged with a given tag (most active first) |
 
 ## Listing columns
 

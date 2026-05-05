@@ -1415,6 +1415,41 @@
   },
   {
     "site": "arxiv",
+    "name": "author",
+    "description": "List arXiv papers by a given author (newest first)",
+    "access": "read",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "author",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Author name (e.g. \"Yoshua Bengio\" or \"Y Bengio\")"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max papers to return (max 50)"
+      }
+    ],
+    "columns": [
+      "id",
+      "title",
+      "authors",
+      "published",
+      "primary_category",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "arxiv/author.js",
+    "sourceFile": "arxiv/author.js"
+  },
+  {
+    "site": "arxiv",
     "name": "paper",
     "description": "Get arXiv paper details by ID",
     "access": "read",
@@ -4925,6 +4960,55 @@
   },
   {
     "site": "coingecko",
+    "name": "coin",
+    "description": "Fetch a single cryptocurrency's market data by CoinGecko id (e.g. bitcoin, ethereum).",
+    "access": "read",
+    "domain": "api.coingecko.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "id",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "CoinGecko coin id (lowercase, e.g. bitcoin / ethereum / solana)."
+      },
+      {
+        "name": "currency",
+        "type": "string",
+        "default": "usd",
+        "required": false,
+        "help": "Quote currency (usd, cny, eur, jpy, ...)."
+      }
+    ],
+    "columns": [
+      "id",
+      "symbol",
+      "name",
+      "rank",
+      "price",
+      "marketCap",
+      "volume24h",
+      "change24hPct",
+      "change7dPct",
+      "change30dPct",
+      "ath",
+      "athDate",
+      "atl",
+      "atlDate",
+      "circulatingSupply",
+      "totalSupply",
+      "maxSupply",
+      "genesisDate",
+      "homepage"
+    ],
+    "type": "js",
+    "modulePath": "coingecko/coin.js",
+    "sourceFile": "coingecko/coin.js"
+  },
+  {
+    "site": "coingecko",
     "name": "top",
     "description": "按市值排序的加密货币行情（默认 USD）",
     "access": "read",
@@ -4961,6 +5045,28 @@
     "type": "js",
     "modulePath": "coingecko/top.js",
     "sourceFile": "coingecko/top.js"
+  },
+  {
+    "site": "coingecko",
+    "name": "trending",
+    "description": "Top trending cryptocurrencies on CoinGecko in the last 24h (search-volume based).",
+    "access": "read",
+    "domain": "api.coingecko.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [],
+    "columns": [
+      "rank",
+      "id",
+      "symbol",
+      "name",
+      "marketCapRank",
+      "priceBtc",
+      "thumb"
+    ],
+    "type": "js",
+    "modulePath": "coingecko/trending.js",
+    "sourceFile": "coingecko/trending.js"
   },
   {
     "site": "coupang",
@@ -8528,6 +8634,223 @@
     "sourceFile": "gitee/user.js"
   },
   {
+    "site": "github",
+    "name": "releases",
+    "description": "List a public repository's releases (newest first).",
+    "access": "read",
+    "domain": "github.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "repo",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "owner/repo (e.g. nodejs/node)"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max releases to return (max 100; one API page)."
+      }
+    ],
+    "columns": [
+      "tagName",
+      "name",
+      "publishedAt",
+      "prerelease",
+      "draft",
+      "author",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "github/releases.js",
+    "sourceFile": "github/releases.js"
+  },
+  {
+    "site": "github",
+    "name": "repo",
+    "description": "Public GitHub repository metadata (stars, forks, language, license, dates).",
+    "access": "read",
+    "domain": "github.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "repo",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "owner/repo (e.g. facebook/react)"
+      }
+    ],
+    "columns": [
+      "fullName",
+      "description",
+      "language",
+      "stars",
+      "forks",
+      "openIssues",
+      "watchers",
+      "license",
+      "defaultBranch",
+      "archived",
+      "fork",
+      "createdAt",
+      "updatedAt",
+      "pushedAt",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "github/repo.js",
+    "sourceFile": "github/repo.js"
+  },
+  {
+    "site": "github",
+    "name": "search-repos",
+    "description": "Search public repositories on GitHub.",
+    "access": "read",
+    "domain": "github.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "query",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "Search query (supports GitHub search syntax e.g. \"react language:typescript\")"
+      },
+      {
+        "name": "sort",
+        "type": "string",
+        "default": "stars",
+        "required": false,
+        "help": "Sort key: stars, forks, updated, help-wanted-issues"
+      },
+      {
+        "name": "order",
+        "type": "string",
+        "default": "desc",
+        "required": false,
+        "help": "Order: desc, asc"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max repos to return (max 100; one API page)."
+      }
+    ],
+    "columns": [
+      "fullName",
+      "description",
+      "language",
+      "stars",
+      "forks",
+      "updatedAt",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "github/search-repos.js",
+    "sourceFile": "github/search-repos.js"
+  },
+  {
+    "site": "github",
+    "name": "user",
+    "description": "Public GitHub user profile (login, bio, followers, repos count, etc.)",
+    "access": "read",
+    "domain": "github.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "username",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "GitHub login (with or without leading @)"
+      }
+    ],
+    "columns": [
+      "login",
+      "name",
+      "bio",
+      "company",
+      "location",
+      "blog",
+      "followers",
+      "following",
+      "publicRepos",
+      "publicGists",
+      "createdAt",
+      "updatedAt",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "github/user.js",
+    "sourceFile": "github/user.js"
+  },
+  {
+    "site": "github",
+    "name": "user-repos",
+    "description": "List public repositories owned by a GitHub user.",
+    "access": "read",
+    "domain": "github.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "username",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "GitHub login"
+      },
+      {
+        "name": "sort",
+        "type": "string",
+        "default": "updated",
+        "required": false,
+        "help": "Sort key: updated, created, pushed, full_name"
+      },
+      {
+        "name": "type",
+        "type": "string",
+        "default": "owner",
+        "required": false,
+        "help": "Filter: all, owner, member"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 30,
+        "required": false,
+        "help": "Max repos to return (max 100; one API page)."
+      }
+    ],
+    "columns": [
+      "name",
+      "fullName",
+      "description",
+      "language",
+      "stars",
+      "forks",
+      "archived",
+      "fork",
+      "updatedAt",
+      "pushedAt",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "github/user-repos.js",
+    "sourceFile": "github/user-repos.js"
+  },
+  {
     "site": "google",
     "name": "news",
     "description": "Get Google News headlines",
@@ -9282,6 +9605,101 @@
     "type": "js",
     "modulePath": "hackernews/user.js",
     "sourceFile": "hackernews/user.js"
+  },
+  {
+    "site": "hf",
+    "name": "datasets",
+    "description": "Top Hugging Face datasets (downloads / likes / trending / freshness).",
+    "access": "read",
+    "domain": "huggingface.co",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "sort",
+        "type": "string",
+        "default": "downloads",
+        "required": false,
+        "help": "Sort key: downloads, likes, trending, created_at, last_modified"
+      },
+      {
+        "name": "search",
+        "type": "string",
+        "required": false,
+        "help": "Optional name/owner substring filter."
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max datasets (max 100; one API page)."
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "author",
+      "downloads",
+      "likes",
+      "tags",
+      "lastModified",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "hf/datasets.js",
+    "sourceFile": "hf/datasets.js"
+  },
+  {
+    "site": "hf",
+    "name": "models",
+    "description": "Top Hugging Face models (downloads / likes / trending / freshness).",
+    "access": "read",
+    "domain": "huggingface.co",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "sort",
+        "type": "string",
+        "default": "downloads",
+        "required": false,
+        "help": "Sort key: downloads, likes, trending, created_at, last_modified"
+      },
+      {
+        "name": "search",
+        "type": "string",
+        "required": false,
+        "help": "Optional name/owner substring filter (e.g. \"llama\", \"mistralai/\")"
+      },
+      {
+        "name": "pipeline",
+        "type": "string",
+        "required": false,
+        "help": "Filter by pipeline tag (e.g. text-generation, image-classification)"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max models (max 100; one API page)."
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "author",
+      "pipelineTag",
+      "downloads",
+      "likes",
+      "tags",
+      "lastModified",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "hf/models.js",
+    "sourceFile": "hf/models.js"
   },
   {
     "site": "hf",
@@ -17346,6 +17764,55 @@
   },
   {
     "site": "stackoverflow",
+    "name": "tag",
+    "description": "List Stack Overflow questions tagged with a given tag (most active first).",
+    "access": "read",
+    "domain": "stackoverflow.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "tag",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "Tag slug (e.g. python, rust, typescript)."
+      },
+      {
+        "name": "sort",
+        "type": "string",
+        "default": "activity",
+        "required": false,
+        "help": "Sort key: activity, votes, creation, hot, week, month"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max questions to return (max 100)."
+      }
+    ],
+    "columns": [
+      "rank",
+      "questionId",
+      "title",
+      "score",
+      "answers",
+      "views",
+      "isAnswered",
+      "tags",
+      "author",
+      "createdAt",
+      "lastActivityAt",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "stackoverflow/tag.js",
+    "sourceFile": "stackoverflow/tag.js"
+  },
+  {
+    "site": "stackoverflow",
     "name": "unanswered",
     "description": "Top voted unanswered questions on Stack Overflow",
     "access": "read",
@@ -17376,6 +17843,46 @@
     "type": "js",
     "modulePath": "stackoverflow/unanswered.js",
     "sourceFile": "stackoverflow/unanswered.js"
+  },
+  {
+    "site": "stackoverflow",
+    "name": "user",
+    "description": "Find Stack Overflow users by display name (highest reputation first).",
+    "access": "read",
+    "domain": "stackoverflow.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "name",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "Display name (or substring) to search."
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 10,
+        "required": false,
+        "help": "Max users to return (max 100)."
+      }
+    ],
+    "columns": [
+      "userId",
+      "displayName",
+      "reputation",
+      "goldBadges",
+      "silverBadges",
+      "bronzeBadges",
+      "location",
+      "createdAt",
+      "lastAccessAt",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "stackoverflow/user.js",
+    "sourceFile": "stackoverflow/user.js"
   },
   {
     "site": "steam",
@@ -20742,6 +21249,49 @@
     "modulePath": "weread/shelf.js",
     "sourceFile": "weread/shelf.js",
     "navigateBefore": "https://weread.qq.com"
+  },
+  {
+    "site": "wikipedia",
+    "name": "page",
+    "description": "Full plain-text extract of a Wikipedia article (optional paragraph cap).",
+    "access": "read",
+    "domain": "wikipedia.org",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "title",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "Article title (e.g. \"Transformer (machine learning model)\")"
+      },
+      {
+        "name": "lang",
+        "type": "string",
+        "default": "en",
+        "required": false,
+        "help": "Language code (en, zh, ja, de, ...)."
+      },
+      {
+        "name": "paragraphs",
+        "type": "int",
+        "default": 0,
+        "required": false,
+        "help": "Cap to first N paragraphs (0 = full article)."
+      }
+    ],
+    "columns": [
+      "title",
+      "description",
+      "pageId",
+      "paragraphs",
+      "extract",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "wikipedia/page.js",
+    "sourceFile": "wikipedia/page.js"
   },
   {
     "site": "wikipedia",
