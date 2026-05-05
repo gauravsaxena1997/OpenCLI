@@ -70,6 +70,12 @@ opencli stackoverflow bounties --limit 10
 # Unanswered questions
 opencli stackoverflow unanswered --limit 10
 
+# Tagged questions (id feeds stackoverflow read)
+opencli stackoverflow tag rust --limit 10
+
+# User profile search (returns userId/profile URL rows)
+opencli stackoverflow user "Jon Skeet" --limit 5
+
 # Read a question with answers and comments
 opencli stackoverflow read 11227809
 opencli stackoverflow read 11227809 --answers-limit 3 --comments-limit 5
@@ -90,6 +96,9 @@ opencli stackoverflow read 11227809 -f json
   partial, the command fails fast instead of returning an incomplete thread.
 - Bodies are returned as HTML; this adapter strips tags and decodes named
   / decimal / hex HTML entities for plain-text consumption.
+- `tag` returns question rows with `id`, so agents can call
+  `opencli stackoverflow read <id>` without parsing URLs. `user` returns
+  Stack Overflow profile rows (`userId` + `url`), not question rows.
 
 ## Prerequisites
 

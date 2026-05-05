@@ -17578,7 +17578,7 @@
     ],
     "columns": [
       "rank",
-      "questionId",
+      "id",
       "title",
       "score",
       "answers",

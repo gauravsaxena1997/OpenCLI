@@ -70,6 +70,6 @@ No arguments — returns the current top-7 trending list.
 ## Notes
 
 - The public endpoint is rate-limited; retry briefly if you hit transient `HTTP 429` responses
-- All numeric values are denominated in the selected `--currency`
+- All numeric values are denominated in the selected `--currency`; `coin` fails fast if CoinGecko returns no market fields for that currency
 - `change24hPct` is a raw percent (e.g. `2.34` means `+2.34%`), not a fraction
 - `--limit` is validated upfront and rejected with `ArgumentError` if non-positive or above 250 (the CoinGecko `per_page` upper bound) — no silent clamp

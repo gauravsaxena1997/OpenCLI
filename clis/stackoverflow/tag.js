@@ -25,7 +25,7 @@ cli({
         { name: 'sort', type: 'string', default: 'activity', help: `Sort key: ${SORT_OPTIONS.join(', ')}` },
         { name: 'limit', type: 'int', default: 20, help: 'Max questions to return (max 100).' },
     ],
-    columns: ['rank', 'questionId', 'title', 'score', 'answers', 'views', 'isAnswered', 'tags', 'author', 'createdAt', 'lastActivityAt', 'url'],
+    columns: ['rank', 'id', 'title', 'score', 'answers', 'views', 'isAnswered', 'tags', 'author', 'createdAt', 'lastActivityAt', 'url'],
     func: async (args) => {
         const tag = requireString(args.tag, 'tag').toLowerCase();
         const sort = String(args.sort ?? 'activity').toLowerCase();
@@ -44,7 +44,7 @@ cli({
         const items = ensureItems(data, `stackoverflow tag "${tag}"`);
         return items.slice(0, limit).map((q, i) => ({
             rank: i + 1,
-            questionId: q.question_id,
+            id: q.question_id,
             title: decodeHtmlEntities(q.title || ''),
             score: q.score ?? 0,
             answers: q.answer_count ?? 0,

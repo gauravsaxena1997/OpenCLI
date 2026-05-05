@@ -31,7 +31,10 @@ cli({
         if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
             throw new ArgumentError(`coingecko coin id must look like a CoinGecko slug (got "${args.id}")`);
         }
-        const currency = String(args.currency ?? 'usd').toLowerCase();
+        const currency = String(args.currency ?? 'usd').trim().toLowerCase();
+        if (!/^[a-z0-9-]{2,20}$/.test(currency)) {
+            throw new ArgumentError(`coingecko currency must look like a currency slug (got "${args.currency}")`);
+        }
 
         const url = new URL(`https://api.coingecko.com/api/v3/coins/${id}`);
         url.searchParams.set('localization', 'false');
@@ -69,15 +72,24 @@ cli({
         const md = data.market_data || {};
         const pick = (obj, key) => (obj && obj[key] != null ? obj[key] : null);
         const isoFromMaybe = (s) => (s ? String(s).slice(0, 10) : '');
+        const price = pick(md.current_price, currency);
+        const marketCap = pick(md.market_cap, currency);
+        const volume24h = pick(md.total_volume, currency);
+        if (price == null && marketCap == null && volume24h == null) {
+            throw new CommandExecutionError(
+                `coingecko returned no market data for currency "${currency}"`,
+                'Use a CoinGecko-supported quote currency such as usd, cny, eur, or jpy.',
+            );
+        }
 
         return [{
             id: data.id || id,
             symbol: String(data.symbol || '').toUpperCase(),
             name: data.name || '',
             rank: data.market_cap_rank ?? null,
-            price: pick(md.current_price, currency),
-            marketCap: pick(md.market_cap, currency),
-            volume24h: pick(md.total_volume, currency),
+            price,
+            marketCap,
+            volume24h,
             change24hPct: md.price_change_percentage_24h ?? null,
             change7dPct: md.price_change_percentage_7d ?? null,
             change30dPct: md.price_change_percentage_30d ?? null,
