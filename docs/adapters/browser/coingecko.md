@@ -80,7 +80,7 @@ No arguments — returns the current top-7 trending list.
 | Option | Description |
 |--------|-------------|
 | `--sort` | One of `market_cap_desc` (default), `market_cap_asc`, `name_desc`, `name_asc`, `market_cap_change_24h_desc`, `market_cap_change_24h_asc` |
-| `--limit` | Number of categories to return (1–250, default: 20) |
+| `--limit` | Number of categories to return (1–100, default: 20) |
 
 ### `global`
 

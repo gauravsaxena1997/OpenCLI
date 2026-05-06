@@ -13,6 +13,18 @@ export function requireString(value, label) {
     return s;
 }
 
+export function requireCountryCode(value, defaultValue = 'us') {
+    const raw = value === undefined || value === null ? defaultValue : value;
+    const code = String(raw).trim().toLowerCase();
+    if (!/^[a-z]{2}$/.test(code)) {
+        throw new ArgumentError(
+            `steam currency must be a two-letter storefront country code (got "${value}")`,
+            'Examples: us, cn, jp, de. This controls Steam regional pricing and availability.',
+        );
+    }
+    return code;
+}
+
 export function requireBoundedInt(value, defaultValue, maxValue, label = 'limit') {
     const raw = value ?? defaultValue;
     const n = typeof raw === 'number' ? raw : Number(raw);

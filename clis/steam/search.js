@@ -10,6 +10,7 @@ import {
     decodeHtmlEntities,
     priceCents,
     requireBoundedInt,
+    requireCountryCode,
     requireString,
     steamFetch,
 } from './utils.js';
@@ -36,7 +37,7 @@ cli({
     func: async (args) => {
         const query = requireString(args.query, 'query');
         const limit = requireBoundedInt(args.limit, 20, 50);
-        const cc = String(args.currency ?? 'us').trim().toLowerCase() || 'us';
+        const cc = requireCountryCode(args.currency);
         const url = `${STEAM_STORE}/api/storesearch/?term=${encodeURIComponent(query)}&l=en&cc=${encodeURIComponent(cc)}`;
         const body = await steamFetch(url, 'steam search');
         const items = Array.isArray(body?.items) ? body.items : [];

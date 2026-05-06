@@ -6,7 +6,7 @@
 // genres / categories joined.
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { EmptyResultError } from '@jackwener/opencli/errors';
-import { STEAM_STORE, decodeHtmlEntities, priceCents, requireAppId, steamFetch } from './utils.js';
+import { STEAM_STORE, decodeHtmlEntities, priceCents, requireAppId, requireCountryCode, steamFetch } from './utils.js';
 
 function joinNames(list) {
     if (!Array.isArray(list)) return '';
@@ -35,7 +35,7 @@ cli({
     ],
     func: async (args) => {
         const appId = requireAppId(args.id);
-        const cc = String(args.currency ?? 'us').trim().toLowerCase() || 'us';
+        const cc = requireCountryCode(args.currency);
         const url = `${STEAM_STORE}/api/appdetails?appids=${appId}&l=en&cc=${encodeURIComponent(cc)}`;
         const body = await steamFetch(url, `steam app ${appId}`);
         const wrapper = body?.[appId];

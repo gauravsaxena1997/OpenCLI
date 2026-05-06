@@ -53,6 +53,8 @@ opencli hf top -f json
 | `--date` | Date in `YYYY-MM-DD` format (defaults to most recent) |
 | `--period` | Time period: `daily`, `weekly`, or `monthly` (default: daily) |
 
+Returns paper listing rows with `rank, id, title, upvotes, authors`. The `id` value round-trips into `opencli hf paper <id>`.
+
 ### `paper` Options
 
 | Option | Description |

@@ -9786,6 +9786,13 @@
         ]
       }
     ],
+    "columns": [
+      "rank",
+      "id",
+      "title",
+      "upvotes",
+      "authors"
+    ],
     "type": "js",
     "modulePath": "hf/top.js",
     "sourceFile": "hf/top.js"
