@@ -22930,7 +22930,7 @@
   {
     "site": "twitter",
     "name": "search",
-    "description": "Search Twitter/X for tweets",
+    "description": "Search Twitter/X for tweets, with optional --from / --has / --exclude / --product filters mapped to X's search operators",
     "access": "read",
     "domain": "x.com",
     "strategy": "intercept",
@@ -22941,17 +22941,60 @@
         "type": "string",
         "required": true,
         "positional": true,
-        "help": "Twitter/X search query (operators like `from:` and `since:` are supported)"
+        "help": "Search query. Raw X operators (e.g. \"exact phrase\", #tag, OR, lang:en, since:YYYY-MM-DD, from:, since:) are passed through unchanged."
       },
       {
         "name": "filter",
         "type": "string",
         "default": "top",
         "required": false,
-        "help": "",
+        "help": "Legacy alias for --product. Kept for backwards compatibility; if --product is set it wins.",
         "choices": [
           "top",
           "live"
+        ]
+      },
+      {
+        "name": "product",
+        "type": "string",
+        "required": false,
+        "help": "Which X search tab to read: top (default), live (Latest), photos, videos. Maps to the f= URL param.",
+        "choices": [
+          "top",
+          "live",
+          "photos",
+          "videos"
+        ]
+      },
+      {
+        "name": "from",
+        "type": "string",
+        "required": false,
+        "help": "Restrict to tweets authored by <user>. Leading @ is stripped. Equivalent to appending `from:<user>` to the query."
+      },
+      {
+        "name": "has",
+        "type": "string",
+        "required": false,
+        "help": "Restrict to tweets that have media|images|videos|links|replies. Maps to X's `filter:<has>` operator.",
+        "choices": [
+          "media",
+          "images",
+          "videos",
+          "links",
+          "replies"
+        ]
+      },
+      {
+        "name": "exclude",
+        "type": "string",
+        "required": false,
+        "help": "Exclude tweets matching <type>: replies|retweets|media|links. Maps to X's `-filter:<x>` operator (retweets → -filter:nativeretweets).",
+        "choices": [
+          "replies",
+          "retweets",
+          "media",
+          "links"
         ]
       },
       {
@@ -22959,7 +23002,7 @@
         "type": "int",
         "default": 15,
         "required": false,
-        "help": ""
+        "help": "Maximum number of tweets to return (default 15). Result count after server-side filtering."
       }
     ],
     "columns": [

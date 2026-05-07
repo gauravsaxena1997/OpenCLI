@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getRegistry } from '@jackwener/opencli/registry';
-import './search.js';
+import { __test__ } from './search.js';
+
+const { buildSearchQuery, resolveSearchFParam, HAS_CHOICES, EXCLUDE_CHOICES, PRODUCT_CHOICES, EXCLUDE_TO_OPERATOR, PRODUCT_TO_F_PARAM } = __test__;
 describe('twitter search command', () => {
     it('retries transient SPA navigation failures before giving up', async () => {
         const command = getRegistry().get('twitter/search');
@@ -236,5 +238,177 @@ describe('twitter search command', () => {
         expect(page.autoScroll).not.toHaveBeenCalled();
         expect(page.getInterceptedRequests).not.toHaveBeenCalled();
         expect(evaluate).toHaveBeenCalledTimes(5);
+    });
+});
+
+describe('twitter search filter helpers', () => {
+    describe('buildSearchQuery', () => {
+        it('returns the trimmed raw query when no filters are set', () => {
+            expect(buildSearchQuery('  hello world  ', {})).toBe('hello world');
+        });
+        it('appends from: with leading @ stripped', () => {
+            expect(buildSearchQuery('hello', { from: '@alice' })).toBe('hello from:alice');
+        });
+        it('preserves from: when caller passes a bare username', () => {
+            expect(buildSearchQuery('hello', { from: 'alice' })).toBe('hello from:alice');
+        });
+        it('strips multiple leading @ characters from --from', () => {
+            expect(buildSearchQuery('hi', { from: '@@bob' })).toBe('hi from:bob');
+        });
+        it('drops --from when it is whitespace-only', () => {
+            expect(buildSearchQuery('hi', { from: '   ' })).toBe('hi');
+        });
+        it('appends filter:<has> for --has', () => {
+            expect(buildSearchQuery('q', { has: 'images' })).toBe('q filter:images');
+        });
+        it('maps --exclude retweets to -filter:nativeretweets', () => {
+            expect(buildSearchQuery('q', { exclude: 'retweets' })).toBe('q -filter:nativeretweets');
+        });
+        it('maps --exclude replies/media/links to their -filter operators', () => {
+            expect(buildSearchQuery('q', { exclude: 'replies' })).toBe('q -filter:replies');
+            expect(buildSearchQuery('q', { exclude: 'media' })).toBe('q -filter:media');
+            expect(buildSearchQuery('q', { exclude: 'links' })).toBe('q -filter:links');
+        });
+        it('silently ignores unknown --exclude values', () => {
+            // choices: ['replies','retweets','media','links'] — unknowns shouldn't appear
+            // in real CLI use because the validator rejects them, but the helper still
+            // guards via the EXCLUDE_TO_OPERATOR map lookup.
+            expect(buildSearchQuery('q', { exclude: 'bogus' })).toBe('q');
+        });
+        it('composes multiple filter clauses in stable order: query → from → has → exclude', () => {
+            expect(buildSearchQuery('hot take', {
+                from: '@alice',
+                has: 'media',
+                exclude: 'retweets',
+            })).toBe('hot take from:alice filter:media -filter:nativeretweets');
+        });
+        it('allows an empty raw query when filters are present', () => {
+            expect(buildSearchQuery('', { from: 'alice' })).toBe('from:alice');
+        });
+        it('returns empty string when nothing useful is supplied', () => {
+            expect(buildSearchQuery('', {})).toBe('');
+            expect(buildSearchQuery('   ', {})).toBe('');
+        });
+        it('coerces nullish raw query into empty string', () => {
+            expect(buildSearchQuery(null, { from: 'alice' })).toBe('from:alice');
+            expect(buildSearchQuery(undefined, { from: 'alice' })).toBe('from:alice');
+        });
+    });
+
+    describe('resolveSearchFParam', () => {
+        it('defaults to top when neither product nor filter is set', () => {
+            expect(resolveSearchFParam({})).toBe('top');
+        });
+        it('returns top when filter=top', () => {
+            expect(resolveSearchFParam({ filter: 'top' })).toBe('top');
+        });
+        it('returns live when filter=live', () => {
+            expect(resolveSearchFParam({ filter: 'live' })).toBe('live');
+        });
+        it('maps --product photos to image (Twitter URL singular form)', () => {
+            expect(resolveSearchFParam({ product: 'photos' })).toBe('image');
+        });
+        it('maps --product videos to video (Twitter URL singular form)', () => {
+            expect(resolveSearchFParam({ product: 'videos' })).toBe('video');
+        });
+        it('maps --product top|live straight through', () => {
+            expect(resolveSearchFParam({ product: 'top' })).toBe('top');
+            expect(resolveSearchFParam({ product: 'live' })).toBe('live');
+        });
+        it('lets --product win when both --product and --filter are set', () => {
+            expect(resolveSearchFParam({ product: 'photos', filter: 'live' })).toBe('image');
+            expect(resolveSearchFParam({ product: 'top', filter: 'live' })).toBe('top');
+        });
+        it('falls back to filter when --product is unknown', () => {
+            // unknowns are blocked at the CLI validator layer; this is just defence
+            expect(resolveSearchFParam({ product: 'bogus', filter: 'live' })).toBe('live');
+            expect(resolveSearchFParam({ product: 'bogus' })).toBe('top');
+        });
+    });
+
+    describe('choice surface', () => {
+        it('exposes the documented HAS_CHOICES set', () => {
+            expect(HAS_CHOICES).toEqual(['media', 'images', 'videos', 'links', 'replies']);
+        });
+        it('exposes the documented EXCLUDE_CHOICES set', () => {
+            expect(EXCLUDE_CHOICES).toEqual(['replies', 'retweets', 'media', 'links']);
+        });
+        it('exposes the documented PRODUCT_CHOICES set', () => {
+            expect(PRODUCT_CHOICES).toEqual(['top', 'live', 'photos', 'videos']);
+        });
+        it('keeps PRODUCT_TO_F_PARAM domain a strict subset of PRODUCT_CHOICES', () => {
+            for (const choice of PRODUCT_CHOICES) {
+                expect(PRODUCT_TO_F_PARAM[choice]).toBeTypeOf('string');
+            }
+        });
+        it('keeps EXCLUDE_TO_OPERATOR domain a strict subset of EXCLUDE_CHOICES', () => {
+            for (const choice of EXCLUDE_CHOICES) {
+                expect(EXCLUDE_TO_OPERATOR[choice]).toMatch(/^-filter:/);
+            }
+        });
+    });
+});
+
+describe('twitter search end-to-end with new filters', () => {
+    it('encodes the composed query and product=live into the f= URL param', async () => {
+        const command = getRegistry().get('twitter/search');
+        const evaluate = vi.fn()
+            .mockResolvedValueOnce(undefined)
+            .mockResolvedValueOnce('/search');
+        const page = {
+            goto: vi.fn().mockResolvedValue(undefined),
+            wait: vi.fn().mockResolvedValue(undefined),
+            installInterceptor: vi.fn().mockResolvedValue(undefined),
+            evaluate,
+            autoScroll: vi.fn().mockResolvedValue(undefined),
+            getInterceptedRequests: vi.fn().mockResolvedValue([]),
+        };
+        await command.func(page, {
+            query: 'breaking news',
+            from: '@alice',
+            has: 'images',
+            exclude: 'retweets',
+            product: 'live',
+            limit: 5,
+        });
+        const pushStateCall = evaluate.mock.calls[0][0];
+        // f=live wins because --product=live trumps the default --filter
+        expect(pushStateCall).toContain('f=live');
+        // composed query should be percent-encoded inside the URL
+        const encoded = encodeURIComponent('breaking news from:alice filter:images -filter:nativeretweets');
+        expect(pushStateCall).toContain(encoded);
+    });
+    it('throws ArgumentError when query and all filters are empty', async () => {
+        const command = getRegistry().get('twitter/search');
+        const page = {
+            goto: vi.fn().mockResolvedValue(undefined),
+            wait: vi.fn().mockResolvedValue(undefined),
+            installInterceptor: vi.fn().mockResolvedValue(undefined),
+            evaluate: vi.fn(),
+            autoScroll: vi.fn().mockResolvedValue(undefined),
+            getInterceptedRequests: vi.fn(),
+        };
+        await expect(command.func(page, { query: '   ', limit: 5 }))
+            .rejects
+            .toThrow(/empty/i);
+        expect(page.installInterceptor).not.toHaveBeenCalled();
+    });
+    it('runs with only filters set (empty <query>)', async () => {
+        const command = getRegistry().get('twitter/search');
+        const evaluate = vi.fn()
+            .mockResolvedValueOnce(undefined)
+            .mockResolvedValueOnce('/search');
+        const page = {
+            goto: vi.fn().mockResolvedValue(undefined),
+            wait: vi.fn().mockResolvedValue(undefined),
+            installInterceptor: vi.fn().mockResolvedValue(undefined),
+            evaluate,
+            autoScroll: vi.fn().mockResolvedValue(undefined),
+            getInterceptedRequests: vi.fn().mockResolvedValue([]),
+        };
+        const result = await command.func(page, { query: '', from: 'alice', limit: 5 });
+        expect(result).toEqual([]);
+        const pushStateCall = evaluate.mock.calls[0][0];
+        expect(pushStateCall).toContain(encodeURIComponent('from:alice'));
     });
 });
