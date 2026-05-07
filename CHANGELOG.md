@@ -5,6 +5,7 @@
 ### Features
 
 * **help / browser** — `opencli browser --help -f yaml|json` now emits a structured, agent-ready index of all browser leaf commands (including nested `tab`, `get`, and `dialog` commands), their positionals, command options, namespace options, and root global options. Individual browser commands also support structured help, backed by a shared Commander option/argument spec extractor.
+* **help / built-in namespaces** — `opencli daemon|plugin|adapter|profile --help -f yaml|json` now emit the same structured payload as `browser`. One agent call returns every leaf's positionals, options, descriptions, and global options — no per-leaf `--help` follow-ups needed. Original namespace descriptions are preserved through `applyRootSubcommandSummaries()` via a snapshot at namespace declaration time.
 
 ### Bug Fixes
 
