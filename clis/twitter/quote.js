@@ -14,10 +14,18 @@ function buildQuoteComposerUrl(url) {
     return `https://x.com/compose/post?url=${encodeURIComponent(parsed.url)}`;
 }
 
-async function submitQuote(page, text) {
+async function submitQuote(page, text, tweetId) {
     return page.evaluate(`(async () => {
         try {
             const visible = (el) => !!el && (el.offsetParent !== null || el.getClientRects().length > 0);
+            const getStatusId = (href) => {
+                try {
+                    const match = new URL(href, window.location.origin).pathname.match(/^\\/(?:[^/]+|i)\\/status\\/(\\d+)\\/?$/);
+                    return match?.[1] || null;
+                } catch {
+                    return null;
+                }
+            };
             const boxes = Array.from(document.querySelectorAll('[data-testid="tweetTextarea_0"]'));
             const box = boxes.find(visible) || boxes[0];
             if (!box) {
@@ -26,6 +34,7 @@ async function submitQuote(page, text) {
 
             box.focus();
             const textToInsert = ${JSON.stringify(text)};
+            const tweetId = ${JSON.stringify(tweetId)};
             // execCommand('insertText') is more reliable with Twitter's Draft.js editor.
             if (!document.execCommand('insertText', false, textToInsert)) {
                 // Fallback to paste event if execCommand fails.
@@ -45,8 +54,8 @@ async function submitQuote(page, text) {
             let cardAttempts = 0;
             let hasQuoteCard = false;
             while (cardAttempts < 20) {
-                hasQuoteCard = !!document.querySelector('[data-testid="tweet"], [data-testid="card.wrapper"], [aria-label*="Quote"]')
-                    || !!document.querySelector('div[role="link"][tabindex] a[href*="/status/"]');
+                hasQuoteCard = Array.from(document.querySelectorAll('a[href*="/status/"]'))
+                    .some((link) => getStatusId(link.href) === tweetId);
                 if (hasQuoteCard) break;
                 await new Promise(r => setTimeout(r, 250));
                 cardAttempts++;
@@ -107,10 +116,11 @@ cli({
             throw new CommandExecutionError('Browser session required for twitter quote');
 
         // Dedicated composer is more reliable than the inline quote-tweet button.
-        await page.goto(buildQuoteComposerUrl(kwargs.url), { waitUntil: 'load', settleMs: 2500 });
+        const target = parseTweetUrl(kwargs.url);
+        await page.goto(`https://x.com/compose/post?url=${encodeURIComponent(target.url)}`, { waitUntil: 'load', settleMs: 2500 });
         await page.wait({ selector: '[data-testid="tweetTextarea_0"]', timeout: 15 });
 
-        const result = await submitQuote(page, kwargs.text);
+        const result = await submitQuote(page, kwargs.text, target.id);
         if (result.ok) {
             // Wait for network submission to complete
             await page.wait(3);

@@ -24,7 +24,7 @@ describe('twitter unlike command', () => {
         expect(script).toContain("targetArticle?.querySelector('[data-testid=\"unlike\"]')");
         expect(script).toContain('unlikeBtn.click()');
         expect(script).toContain("document.querySelectorAll('article')");
-        expect(script).toContain("'/status/' + tweetId");
+        expect(script).toContain('match?.[1] === tweetId');
         expect(script).toContain("targetArticle?.querySelector('[data-testid=\"unlike\"]')");
         expect(result).toEqual([
             { status: 'success', message: 'Tweet successfully unliked.' },

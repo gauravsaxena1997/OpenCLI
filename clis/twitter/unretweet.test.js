@@ -25,7 +25,7 @@ describe('twitter unretweet command', () => {
         expect(script).toContain("document.querySelector('[data-testid=\"unretweetConfirm\"]')");
         expect(script).toContain('confirmBtn.click()');
         expect(script).toContain("document.querySelectorAll('article')");
-        expect(script).toContain("'/status/' + tweetId");
+        expect(script).toContain('match?.[1] === tweetId');
         expect(script).toContain("targetArticle?.querySelector('[data-testid=\"unretweet\"]')");
         // Idempotency probe: when already not retweeted ([data-testid="retweet"] present),
         // the script returns ok:true with an "already removed" message.

@@ -52,6 +52,7 @@ describe('twitter quote command', () => {
         expect(script).toContain('Quote target did not render');
         expect(script).toContain('document.execCommand');
         expect(script).toContain('tweetButton');
+        expect(script).toContain('getStatusId(link.href) === tweetId');
         expect(script).toContain('Quote tweet submission did not complete before timeout');
         expect(script).toContain('[role="alert"], [data-testid="toast"]');
         expect(result).toEqual([

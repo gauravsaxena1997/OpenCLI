@@ -26,7 +26,8 @@ cli({
             const findTargetArticle = () => Array.from(document.querySelectorAll('article')).find((article) =>
                 Array.from(article.querySelectorAll('a[href*="/status/"]')).some((link) => {
                     try {
-                        return new URL(link.href, window.location.origin).pathname.includes('/status/' + tweetId);
+                        const match = new URL(link.href, window.location.origin).pathname.match(/^\/(?:[^/]+|i)\/status\/(\d+)\/?$/);
+                        return match?.[1] === tweetId;
                     } catch {
                         return false;
                     }

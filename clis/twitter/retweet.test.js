@@ -25,7 +25,7 @@ describe('twitter retweet command', () => {
         expect(script).toContain("document.querySelector('[data-testid=\"retweetConfirm\"]')");
         expect(script).toContain('confirmBtn.click()');
         expect(script).toContain("document.querySelectorAll('article')");
-        expect(script).toContain("'/status/' + tweetId");
+        expect(script).toContain('match?.[1] === tweetId');
         expect(script).toContain("targetArticle?.querySelector('[data-testid=\"retweet\"]')");
         // Idempotency probe: when already retweeted ([data-testid="unretweet"] present),
         // the script returns ok:true with an "already retweeted" message.
