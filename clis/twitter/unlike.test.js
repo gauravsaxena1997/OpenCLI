@@ -20,9 +20,12 @@ describe('twitter unlike command', () => {
         expect(page.wait).toHaveBeenNthCalledWith(2, 2);
         const script = page.evaluate.mock.calls[0][0];
         // Idempotency check: looks for the like button (already-not-liked path) before clicking unlike.
-        expect(script).toContain("document.querySelector('[data-testid=\"like\"]')");
-        expect(script).toContain("document.querySelector('[data-testid=\"unlike\"]')");
+        expect(script).toContain("targetArticle?.querySelector('[data-testid=\"like\"]')");
+        expect(script).toContain("targetArticle?.querySelector('[data-testid=\"unlike\"]')");
         expect(script).toContain('unlikeBtn.click()');
+        expect(script).toContain("document.querySelectorAll('article')");
+        expect(script).toContain("'/status/' + tweetId");
+        expect(script).toContain("targetArticle?.querySelector('[data-testid=\"unlike\"]')");
         expect(result).toEqual([
             { status: 'success', message: 'Tweet successfully unliked.' },
         ]);

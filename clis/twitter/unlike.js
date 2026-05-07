@@ -22,14 +22,26 @@ cli({
         await page.wait({ selector: '[data-testid="primaryColumn"]' });
         const result = await page.evaluate(`(async () => {
         try {
+            const tweetId = ${JSON.stringify(target.id)};
+            const findTargetArticle = () => Array.from(document.querySelectorAll('article')).find((article) =>
+                Array.from(article.querySelectorAll('a[href*="/status/"]')).some((link) => {
+                    try {
+                        return new URL(link.href, window.location.origin).pathname.includes('/status/' + tweetId);
+                    } catch {
+                        return false;
+                    }
+                })
+            );
             // Poll for the tweet to render
             let attempts = 0;
             let likeBtn = null;
             let unlikeBtn = null;
+            let targetArticle = null;
 
             while (attempts < 20) {
-                likeBtn = document.querySelector('[data-testid="like"]');
-                unlikeBtn = document.querySelector('[data-testid="unlike"]');
+                targetArticle = findTargetArticle();
+                likeBtn = targetArticle?.querySelector('[data-testid="like"]') || null;
+                unlikeBtn = targetArticle?.querySelector('[data-testid="unlike"]') || null;
 
                 if (likeBtn || unlikeBtn) break;
 
@@ -51,7 +63,8 @@ cli({
             await new Promise(r => setTimeout(r, 1000));
 
             // Verify success by checking if the 'like' button reappeared
-            const verifyBtn = document.querySelector('[data-testid="like"]');
+            const verifyArticle = findTargetArticle() || targetArticle;
+            const verifyBtn = verifyArticle?.querySelector('[data-testid="like"]');
             if (verifyBtn) {
                 return { ok: true, message: 'Tweet successfully unliked.' };
             } else {

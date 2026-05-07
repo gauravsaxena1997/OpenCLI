@@ -21,13 +21,15 @@ describe('twitter unretweet command', () => {
         // Two-step UI flow must be present:
         //   1) click the unretweet button
         //   2) wait for and click the confirm menu item (data-testid="unretweetConfirm")
-        expect(script).toContain("document.querySelector('[data-testid=\"unretweet\"]')");
         expect(script).toContain('unretweetBtn.click()');
         expect(script).toContain("document.querySelector('[data-testid=\"unretweetConfirm\"]')");
         expect(script).toContain('confirmBtn.click()');
+        expect(script).toContain("document.querySelectorAll('article')");
+        expect(script).toContain("'/status/' + tweetId");
+        expect(script).toContain("targetArticle?.querySelector('[data-testid=\"unretweet\"]')");
         // Idempotency probe: when already not retweeted ([data-testid="retweet"] present),
         // the script returns ok:true with an "already removed" message.
-        expect(script).toContain("document.querySelector('[data-testid=\"retweet\"]')");
+        expect(script).toContain("targetArticle?.querySelector('[data-testid=\"retweet\"]')");
         expect(result).toEqual([
             { status: 'success', message: 'Tweet successfully unretweeted.' },
         ]);

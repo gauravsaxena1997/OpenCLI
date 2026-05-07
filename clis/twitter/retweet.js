@@ -22,14 +22,26 @@ cli({
         await page.wait({ selector: '[data-testid="primaryColumn"]' });
         const result = await page.evaluate(`(async () => {
         try {
+            const tweetId = ${JSON.stringify(target.id)};
+            const findTargetArticle = () => Array.from(document.querySelectorAll('article')).find((article) =>
+                Array.from(article.querySelectorAll('a[href*="/status/"]')).some((link) => {
+                    try {
+                        return new URL(link.href, window.location.origin).pathname.includes('/status/' + tweetId);
+                    } catch {
+                        return false;
+                    }
+                })
+            );
             // Poll for the tweet to render
             let attempts = 0;
             let retweetBtn = null;
             let unretweetBtn = null;
+            let targetArticle = null;
 
             while (attempts < 20) {
-                unretweetBtn = document.querySelector('[data-testid="unretweet"]');
-                retweetBtn = document.querySelector('[data-testid="retweet"]');
+                targetArticle = findTargetArticle();
+                unretweetBtn = targetArticle?.querySelector('[data-testid="unretweet"]') || null;
+                retweetBtn = targetArticle?.querySelector('[data-testid="retweet"]') || null;
 
                 if (unretweetBtn || retweetBtn) break;
 
@@ -63,7 +75,8 @@ cli({
             await new Promise(r => setTimeout(r, 1000));
 
             // Verify success by checking if the 'unretweet' button appeared
-            const verifyBtn = document.querySelector('[data-testid="unretweet"]');
+            const verifyArticle = findTargetArticle() || targetArticle;
+            const verifyBtn = verifyArticle?.querySelector('[data-testid="unretweet"]');
             if (verifyBtn) {
                 return { ok: true, message: 'Tweet successfully retweeted.' };
             } else {
