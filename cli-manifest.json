@@ -15728,6 +15728,49 @@
   },
   {
     "site": "linkedin",
+    "name": "post-analytics",
+    "description": "Summarize raw visible LinkedIn post counters without custom scoring or classification",
+    "access": "read",
+    "domain": "www.linkedin.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "profile-url",
+        "type": "string",
+        "required": false,
+        "help": "LinkedIn /in/<handle>/ profile URL. Defaults to /in/me/."
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 30,
+        "required": false,
+        "help": "Maximum posts to summarize (1-100)"
+      }
+    ],
+    "columns": [
+      "posts_analyzed",
+      "total_reactions",
+      "total_comments",
+      "total_reposts",
+      "total_impressions",
+      "posts_with_media",
+      "posts_with_urls",
+      "latest_posted_at",
+      "latest_reactions",
+      "latest_comments",
+      "latest_reposts",
+      "latest_impressions",
+      "latest_url"
+    ],
+    "type": "js",
+    "modulePath": "linkedin/post-analytics.js",
+    "sourceFile": "linkedin/post-analytics.js",
+    "navigateBefore": "https://www.linkedin.com"
+  },
+  {
+    "site": "linkedin",
     "name": "safe-send",
     "description": "Fail-closed LinkedIn message sender that verifies exact thread, recipient, and latest message before filling/sending",
     "access": "write",
