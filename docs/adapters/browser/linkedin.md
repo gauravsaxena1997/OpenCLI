@@ -9,6 +9,7 @@
 | `opencli linkedin connect` | Send a fail-closed connection request after verifying the exact profile |
 | `opencli linkedin inbox` | List LinkedIn messaging inbox conversations and unread status |
 | `opencli linkedin people-search` | Search standard LinkedIn for people by keyword (SSR DOM scrape). Each query counts toward LinkedIn's monthly Commercial Use Limit |
+| `opencli linkedin profile-projects` | Read visible LinkedIn profile projects with descriptions, dates, skills, media, and URLs |
 | `opencli linkedin safe-send` | Verify exact recipient/thread context before optionally sending a message |
 | `opencli linkedin salesnav-inbox` | List Sales Navigator message conversations with API pagination |
 | `opencli linkedin salesnav-message` | Validate or send a Sales Navigator InMail to an exact lead |
@@ -33,6 +34,9 @@ opencli linkedin search "data scientist" --limit 3 --details
 
 # Read your home timeline
 opencli linkedin timeline --limit 5
+
+# Read visible profile projects
+opencli linkedin profile-projects -f json
 
 # List recent inbox conversations, including unread status
 opencli linkedin inbox --limit 20 -f json
@@ -86,6 +90,12 @@ Previously the adapter returned `description: '', apply_url: ''` for both the mi
 Returns `rank`, `name`, `headline`, `location`, and `profile_url` from the rendered LinkedIn people-search page. `profile_url` is the row identity and must be a stable `/in/<handle>/` LinkedIn profile URL; malformed extraction payloads fail typed instead of being reported as empty results.
 
 `--limit` must be between 1 and 10. LinkedIn login/auth walls abort with `AuthRequiredError`; Commercial Use Limit redirects abort with `CommandExecutionError` because the page no longer contains a trustworthy result list.
+
+### `profile-projects`
+
+Opens a profile URL, or `/in/me/` by default, resolves it to the profile's Projects detail page, and returns visible project rows.
+
+Returns `rank`, `title`, `date_range`, `associated_with`, `description`, `skills`, `media`, `urls`, `profile_url`, and `raw_text`. If the authenticated profile has no visible Projects section, the command returns `EmptyResultError` instead of emitting placeholder rows.
 
 ### Messaging commands
 
