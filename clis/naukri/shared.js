@@ -1,6 +1,7 @@
 import { AuthRequiredError, CommandExecutionError, ArgumentError } from '@jackwener/opencli/errors';
 
 export const NAUKRI_PROFILE_URL = 'https://www.naukri.com/mnjuser/profile';
+export const IT_SKILLS_LIMIT = 10;
 
 export const PROFILE_COLUMNS = [
   'profile_url',
@@ -108,6 +109,90 @@ export function normalizeSkillList(values) {
       seen.add(key);
       return true;
     });
+}
+
+export function parseExperience(value) {
+  const text = normalizeWhitespace(value);
+  if (!text || text === '-') return { years: '', months: '' };
+  const yearsMatch = text.match(/(\d+)\s+Years?/i);
+  const monthsMatch = text.match(/(\d+)\s+Months?/i);
+  return {
+    years: yearsMatch?.[1] || '0',
+    months: monthsMatch?.[1] || '0',
+  };
+}
+
+export function normalizeItSkillRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => {
+      const experience = parseExperience(row?.experience);
+      return {
+        id: normalizeWhitespace(row?.id),
+        skill: normalizeWhitespace(row?.skill),
+        version: normalizeWhitespace(row?.version === '-' ? '' : row?.version),
+        last_used: normalizeWhitespace(row?.last_used === '-' ? '' : row?.last_used),
+        experience_years: normalizeWhitespace(row?.experience_years ?? experience.years),
+        experience_months: normalizeWhitespace(row?.experience_months ?? experience.months),
+      };
+    })
+    .filter((row) => row.skill);
+}
+
+export function normalizeItSkillItem(item) {
+  const row = typeof item === 'string' ? { skill: item } : item || {};
+  const years = normalizeWhitespace(row.years ?? row.experience_years ?? row.year ?? '');
+  const months = normalizeWhitespace(row.months ?? row.experience_months ?? row.month ?? '');
+  return {
+    skill: requireText(row.skill, 'skill', 80),
+    version: normalizeWhitespace(row.version),
+    last_used: normalizeWhitespace(row.last_used ?? row.lastUsed ?? ''),
+    experience_years: years === '' ? '0' : years,
+    experience_months: months === '' ? '0' : months,
+  };
+}
+
+export function parseItSkillItems(value) {
+  let parsed;
+  try {
+    parsed = JSON.parse(String(value ?? ''));
+  } catch (error) {
+    throw new ArgumentError('--items must be a JSON array', error.message);
+  }
+  if (!Array.isArray(parsed) || !parsed.length) {
+    throw new ArgumentError('--items must be a non-empty JSON array');
+  }
+  const seen = new Set();
+  const items = parsed.map(normalizeItSkillItem).filter((item) => {
+    const key = item.skill.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (items.length > IT_SKILLS_LIMIT) {
+    throw new ArgumentError(
+      `Naukri IT skills supports at most ${IT_SKILLS_LIMIT} rows`,
+      `Received ${items.length}. Remove lower-priority skills before running it-skills-set.`,
+    );
+  }
+  return items;
+}
+
+export function compareItSkillRows(expected, actual) {
+  const expectedRows = (Array.isArray(expected) ? expected : []).map(normalizeItSkillItem);
+  const actualRows = normalizeItSkillRows(actual);
+  const key = (value) => normalizeWhitespace(value).toLowerCase();
+  const comparableRow = (row) => [
+    key(row.skill),
+    key(row.version),
+    String(row.experience_years ?? ''),
+    String(row.experience_months ?? ''),
+  ].join('|');
+  const actualKeys = new Set(actualRows.map(comparableRow));
+  const expectedKeys = new Set(expectedRows.map(comparableRow));
+  return {
+    missing: expectedRows.filter((row) => !actualKeys.has(comparableRow(row))).map((row) => row.skill),
+    extra: actualRows.filter((row) => !expectedKeys.has(comparableRow(row))).map((row) => row.skill),
+  };
 }
 
 function readSection(lines, label) {
@@ -230,7 +315,19 @@ export function buildProfileExtractionScript() {
     text: document.body ? document.body.innerText || '' : '',
     keySkills: Array.from(document.querySelectorAll('#lazyKeySkills .chip'))
       .map((el) => (el.getAttribute('title') || el.innerText || el.textContent || '').trim())
-      .filter(Boolean)
+      .filter(Boolean),
+    itSkills: Array.from(document.querySelectorAll('#lazyITSkills li.collection[data-prefillid]'))
+      .map((row) => {
+        const cells = Array.from(row.querySelectorAll('span.col'));
+        return {
+          id: row.getAttribute('data-prefillid') || '',
+          skill: (cells[0]?.innerText || cells[0]?.textContent || '').trim(),
+          version: (cells[1]?.innerText || cells[1]?.textContent || '').trim(),
+          last_used: (cells[2]?.innerText || cells[2]?.textContent || '').trim(),
+          experience: (cells[3]?.innerText || cells[3]?.textContent || '').trim(),
+        };
+      })
+      .filter((row) => row.skill)
   }))()`;
 }
 
@@ -258,6 +355,14 @@ export async function readKeySkills(page) {
   const chipSkills = normalizeSkillList(payload?.keySkills || []);
   if (chipSkills.length) return chipSkills;
   return normalizeSkillList(parseNaukriProfileText(payload).key_skills);
+}
+
+export async function readItSkills(page) {
+  await ensureProfilePage(page);
+  const payload = await page.evaluate(buildProfileExtractionScript());
+  const rows = normalizeItSkillRows(payload?.itSkills || []);
+  if (rows.length) return rows;
+  return [];
 }
 
 export async function ensureProfilePage(page) {
@@ -516,6 +621,239 @@ export function buildKeySkillSuggestionScript(query, limit) {
       const source = networkSuggestions.length ? 'autocomplete-network' : 'autocomplete-dom';
       const suggestions = networkSuggestions.length ? networkSuggestions : domSuggestions;
       return { ok: true, suggestions: suggestions.slice(0, limit), source, endpoint: requestUrls[0] || resourceUrls[0] || '', requests };
+    })()
+  `;
+}
+
+export function buildItSkillSuggestionScript(query, limit) {
+  return `
+    (async () => {
+      const query = ${JSON.stringify(query)};
+      const limit = ${Number(limit) || 10};
+      const clean = (value) => String(value || '').replace(/[\\u00a0\\u202f]+/g, ' ').replace(/\\s+/g, ' ').trim();
+      const visible = (el) => {
+        const rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        return !!rect && rect.width > 0 && rect.height > 0;
+      };
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const section = document.getElementById('lazyITSkills');
+      if (!section) return { ok: false, error: 'it_skills_section_not_found', suggestions: [] };
+      section.scrollIntoView({ block: 'center', inline: 'center' });
+      await wait(400);
+      const add = Array.from(section.querySelectorAll('button,a,[role="button"],span,div'))
+        .filter(visible)
+        .find((el) => /^add$/i.test(clean(el.innerText || el.textContent)) || /add/i.test(clean(el.getAttribute('aria-label') || el.getAttribute('title') || Array.from(el.classList || []).join(' '))));
+      if (!add) return { ok: false, error: 'add_control_not_found', suggestions: [] };
+      add.click();
+      await wait(1000);
+
+      const root = Array.from(document.querySelectorAll('#itSkillsForm, [role="dialog"], .modal, [class*="modal"], [class*="Modal"], [class*="drawer"], [class*="Drawer"]'))
+        .filter(visible).at(-1) || document;
+      const field = root.querySelector('#itSkillSugg') || Array.from(root.querySelectorAll('input[type="text"],input:not([type])')).filter(visible)
+        .find((el) => /skill|software/i.test(clean(el.placeholder || el.name || el.id)));
+      if (!field) return { ok: false, error: 'skill_input_not_found', suggestions: [] };
+      const setValue = (el, value) => {
+        el.focus();
+        const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        descriptor.set.call(el, value);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: value.slice(-1) || 'a' }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      setValue(field, query);
+      await wait(1400);
+
+      const addUnique = (list, text) => {
+        const value = clean(text);
+        if (!value || value.length > 120) return;
+        if (!value.toLowerCase().includes(query.toLowerCase())) return;
+        if (/jobs|recommended jobs|application status|saved jobs|editOneTheme/i.test(value)) return;
+        if (!list.some((item) => item.toLowerCase() === value.toLowerCase())) list.push(value);
+      };
+      const suggestions = [];
+      for (const el of Array.from(document.querySelectorAll('[role="option"], [class*="suggest"] li, [class*="Suggest"] li, [class*="autocomplete"] li, [class*="Autocomplete"] li, .dropdown-content li, ul li')).filter(visible)) {
+        addUnique(suggestions, el.innerText || el.textContent);
+      }
+      const cancel = Array.from(root.querySelectorAll('button,a,[role="button"],span')).filter(visible)
+        .find((el) => /^(cancel|close|crosslayer|×|x)$/i.test(clean(el.innerText || el.textContent || el.getAttribute('aria-label'))));
+      if (cancel) cancel.click();
+      return { ok: true, suggestions: suggestions.slice(0, limit), source: 'autocomplete-dom' };
+    })()
+  `;
+}
+
+export function buildUpsertItSkillScript(item, matchSkill = '') {
+  return `
+    (async () => {
+      const item = ${JSON.stringify(item)};
+      const matchSkill = ${JSON.stringify(matchSkill)};
+      const clean = (value) => String(value || '').replace(/[\\u00a0\\u202f]+/g, ' ').replace(/\\s+/g, ' ').trim();
+      const comparable = (value) => clean(value).toLowerCase().replace(/\\.js\\b/g, 'js').replace(/[^a-z0-9]+/g, '');
+      const visible = (el) => {
+        const rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        return !!rect && rect.width > 0 && rect.height > 0;
+      };
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const setValue = (el, value) => {
+        if (!el) return false;
+        el.focus();
+        const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        descriptor.set.call(el, value == null ? '' : String(value));
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: String(value || '').slice(-1) || 'a' }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      };
+      const roots = () => Array.from(document.querySelectorAll('#itSkillsForm, [role="dialog"], .modal, [class*="modal"], [class*="Modal"], [class*="drawer"], [class*="Drawer"]')).filter(visible);
+      const root = () => roots().at(-1) || document;
+      const section = document.getElementById('lazyITSkills');
+      if (!section) return { ok: false, error: 'it_skills_section_not_found' };
+      section.scrollIntoView({ block: 'center', inline: 'center' });
+      await wait(400);
+      const rows = Array.from(section.querySelectorAll('li.collection[data-prefillid]'));
+      const row = rows.find((entry) => {
+        const skill = clean(entry.querySelector('span.col')?.innerText || entry.querySelector('span.col')?.textContent);
+        return comparable(skill) === comparable(matchSkill || item.skill);
+      });
+      if (row) {
+        row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        row.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+        await wait(200);
+        const edit = row.querySelector('.edit, [class*="edit"], [class*="Edit"], [class*="pencil"], [title*="Edit"], [aria-label*="Edit"]')
+          || Array.from(row.querySelectorAll('button,a,[role="button"],span,i,em,div'))
+          .find((el) => /edit|pencil/i.test(clean(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('title') || Array.from(el.classList || []).join(' '))));
+        if (!edit) return { ok: false, error: 'edit_control_not_found' };
+        edit.click();
+      } else {
+        const add = Array.from(section.querySelectorAll('button,a,[role="button"],span,div')).filter(visible)
+          .find((el) => /^add$/i.test(clean(el.innerText || el.textContent)) || /add/i.test(clean(el.getAttribute('aria-label') || el.getAttribute('title') || Array.from(el.classList || []).join(' '))));
+        if (!add) return { ok: false, error: 'add_control_not_found' };
+        add.click();
+      }
+      await wait(1000);
+      const form = root();
+      const skillField = form.querySelector('#itSkillSugg') || Array.from(form.querySelectorAll('input[type="text"],input:not([type])')).filter(visible)
+        .find((el) => /skill|software/i.test(clean(el.placeholder || el.name || el.id)));
+      const versionField = form.querySelector('#version') || Array.from(form.querySelectorAll('input[type="text"],input:not([type])')).filter(visible)
+        .find((el) => /version/i.test(clean(el.placeholder || el.name || el.id)));
+      if (!skillField) return { ok: false, error: 'skill_input_not_found' };
+      setValue(skillField, item.skill);
+      await wait(700);
+      const options = Array.from(document.querySelectorAll('[role="option"], [class*="suggest"] li, [class*="Suggest"] li, [class*="autocomplete"] li, [class*="Autocomplete"] li, .dropdown-content li, ul li'))
+        .filter(visible)
+        .map((el) => ({ el, text: clean(el.innerText || el.textContent) }))
+        .filter((option) => option.text && option.text.length <= 120 && !/jobs|recommended jobs|application status|saved jobs|editOneTheme/i.test(option.text));
+      const choice = options.find((option) => comparable(option.text) === comparable(item.skill))
+        || options.find((option) => comparable(option.text).includes(comparable(item.skill)) || comparable(item.skill).includes(comparable(option.text)));
+      if (!row && choice) {
+        choice.el.click();
+        await wait(400);
+      }
+      if (versionField) setValue(versionField, item.version || '');
+
+      const selectDroope = async (id, value) => {
+        const desired = clean(value);
+        if (!desired) return true;
+        const dropdown = form.querySelector('#' + id);
+        const field = form.querySelector('#' + id + 'For') || dropdown?.querySelector('input[type="text"]');
+        if (!field) return false;
+        const mouseSelect = (el) => {
+          for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
+            el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+          }
+        };
+        field.click();
+        await wait(250);
+        const scopedRoot = dropdown || form;
+        const choices = Array.from(scopedRoot.querySelectorAll('a, [role="option"], li')).filter(visible)
+          .map((el) => ({ el, text: clean(el.innerText || el.textContent), id: clean(el.getAttribute('data-id') || el.id) }))
+          .filter((option) => option.text || option.id);
+        const picked = choices.find((option) => option.text === desired || option.id.endsWith('_' + desired))
+          || choices.find((option) => option.text.startsWith(desired + ' ') || option.text === desired + ' Years' || option.text === desired + ' Months');
+        if (!picked) return false;
+        mouseSelect(picked.el.closest('li') || picked.el);
+        mouseSelect(picked.el);
+        await wait(500);
+        setValue(field, desired);
+        const hidden = form.querySelector('#hid_' + id);
+        if (hidden && clean(hidden.value) !== desired) {
+          hidden.value = desired;
+          hidden.dispatchEvent(new Event('input', { bubbles: true }));
+          hidden.dispatchEvent(new Event('change', { bubbles: true }));
+          hidden.dispatchEvent(new Event('blur', { bubbles: true }));
+        }
+        field.dispatchEvent(new Event('blur', { bubbles: true }));
+        return true;
+      };
+
+      const lastUsedOk = await selectDroope('lastUsedDroope', item.last_used);
+      const yearOk = await selectDroope('expYearDroope', item.experience_years);
+      const monthOk = await selectDroope('expMonthDroope', item.experience_months);
+      if (!lastUsedOk || !yearOk || !monthOk) return { ok: false, error: 'dropdown_value_not_found', lastUsedOk, yearOk, monthOk };
+
+      const save = Array.from(form.querySelectorAll('button,a,[role="button"],input[type="submit"]')).filter(visible)
+        .find((el) => /^(save|update|submit|done)$/i.test(clean(el.innerText || el.value || el.textContent)));
+      if (!save) return { ok: false, error: 'save_control_not_found' };
+      save.click();
+      await wait(2500);
+      return { ok: true, status: row ? 'updated' : 'created' };
+    })()
+  `;
+}
+
+export function buildDeleteItSkillScript(skill, id = '') {
+  return `
+    (async () => {
+      const skill = ${JSON.stringify(skill)};
+      const targetId = ${JSON.stringify(id)};
+      const clean = (value) => String(value || '').replace(/[\\u00a0\\u202f]+/g, ' ').replace(/\\s+/g, ' ').trim();
+      const comparable = (value) => clean(value).toLowerCase().replace(/\\.js\\b/g, 'js').replace(/[^a-z0-9]+/g, '');
+      const visible = (el) => {
+        const rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        return !!rect && rect.width > 0 && rect.height > 0;
+      };
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const section = document.getElementById('lazyITSkills');
+      if (!section) return { ok: false, error: 'it_skills_section_not_found' };
+      section.scrollIntoView({ block: 'center', inline: 'center' });
+      await wait(400);
+      const rows = Array.from(section.querySelectorAll('li.collection[data-prefillid]'));
+      const row = rows.find((entry) => {
+        if (targetId && entry.getAttribute('data-prefillid') === targetId) return true;
+        const value = clean(entry.querySelector('span.col')?.innerText || entry.querySelector('span.col')?.textContent);
+        return comparable(value) === comparable(skill);
+      });
+      if (!row) return { ok: true, status: 'not_found' };
+      row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      row.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      await wait(200);
+      const control = row.querySelector('.delete, [class*="delete"], [class*="Delete"], [class*="trash"], [title*="Delete"], [aria-label*="Delete"], [title*="Remove"], [aria-label*="Remove"]')
+        || Array.from(row.querySelectorAll('button,a,[role="button"],span,i,em,div')).reverse()
+        .find((el) => /delete|remove|trash|close|cross|x/i.test(clean(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('title') || Array.from(el.classList || []).join(' '))));
+      if (control) {
+        control.click();
+      } else {
+        const edit = row.querySelector('.edit, [class*="edit"], [class*="Edit"], [title*="Edit"], [aria-label*="Edit"]')
+          || Array.from(row.querySelectorAll('button,a,[role="button"],span,i,em,div'))
+          .find((el) => /edit|pencil/i.test(clean(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('title') || Array.from(el.classList || []).join(' '))));
+        if (!edit) return { ok: false, error: 'delete_control_not_found' };
+        edit.click();
+        await wait(900);
+        const roots = Array.from(document.querySelectorAll('#itSkillsForm, [role="dialog"], .modal, [class*="modal"], [class*="Modal"], [class*="drawer"], [class*="Drawer"]')).filter(visible);
+        const root = roots.at(-1) || document;
+        const formDelete = Array.from(root.querySelectorAll('button,a,[role="button"],span,div')).filter(visible)
+          .find((el) => /^delete$/i.test(clean(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('title'))) || /delete/i.test(Array.from(el.classList || []).join(' ')));
+        if (!formDelete) return { ok: false, error: 'delete_control_not_found' };
+        formDelete.click();
+      }
+      await wait(700);
+      const confirm = Array.from(document.querySelectorAll('button,a,[role="button"],input[type="submit"]')).filter(visible)
+        .find((el) => /^(delete|remove|yes|confirm|ok)$/i.test(clean(el.innerText || el.value || el.textContent)));
+      if (confirm) {
+        confirm.click();
+        await wait(1200);
+      }
+      return { ok: true, status: 'deleted' };
     })()
   `;
 }
