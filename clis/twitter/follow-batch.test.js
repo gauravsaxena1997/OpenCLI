@@ -49,8 +49,8 @@ describe('twitter follow-batch command', () => {
             wait: vi.fn().mockResolvedValue(undefined),
             evaluate: vi.fn()
                 .mockResolvedValueOnce({ ok: false, followButtonVisible: true })
-                .mockResolvedValueOnce({ ok: true, noop: false, message: 'Successfully followed @karpathy.' })
-                .mockResolvedValueOnce({ ok: true, noop: true, message: 'Already following @swyx.' })
+                .mockResolvedValueOnce({ ok: true, status: 'success', message: 'Successfully followed @karpathy.' })
+                .mockResolvedValueOnce({ ok: true, status: 'noop', message: 'Already following @swyx.' })
                 .mockResolvedValueOnce({ ok: false, followButtonVisible: false }),
         };
 
@@ -74,7 +74,7 @@ describe('twitter follow-batch command', () => {
             evaluate: vi.fn()
                 .mockResolvedValueOnce({ ok: false, followButtonVisible: true })
                 .mockResolvedValueOnce({ ok: false, retryAfterRefresh: true, message: 'Follow action initiated but UI did not update.' })
-                .mockResolvedValueOnce({ ok: true, noop: true, message: 'Already following @langchainai.' }),
+                .mockResolvedValueOnce({ ok: true, status: 'noop', message: 'Already following @langchainai.' }),
         };
 
         const row = await followOne(page, 'LangChainAI');

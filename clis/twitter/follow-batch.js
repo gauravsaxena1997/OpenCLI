@@ -38,7 +38,7 @@ async function readFollowState(page, username) {
             while (attempts < 20) {
                 const unfollowBtn = document.querySelector('[data-testid$="-unfollow"]');
                 if (unfollowBtn) {
-                    return { ok: true, noop: true, message: 'Already following @${username}.' };
+                    return { ok: true, status: 'noop', message: 'Already following @${username}.' };
                 }
 
                 const followBtn = document.querySelector('[data-testid$="-follow"]');
@@ -70,7 +70,7 @@ async function clickFollowAndVerify(page, username) {
                 await new Promise(r => setTimeout(r, 500));
                 const verify = document.querySelector('[data-testid$="-unfollow"]');
                 if (verify) {
-                    return { ok: true, noop: false, message: 'Successfully followed @${username}.' };
+                    return { ok: true, status: 'success', message: 'Successfully followed @${username}.' };
                 }
             }
 
@@ -94,7 +94,7 @@ export async function followOne(page, username) {
         await page.wait({ selector: '[data-testid="primaryColumn"]' });
         const refreshed = await readFollowState(page, username);
         if (refreshed.ok) {
-            result = { ...refreshed, noop: false, message: `Successfully followed @${username}.` };
+            result = { ...refreshed, status: 'success', message: `Successfully followed @${username}.` };
         }
     }
     if (!result.ok && !result.message) {
@@ -107,7 +107,7 @@ export async function followOne(page, username) {
 
     return {
         username,
-        status: result.ok ? (result.noop ? 'noop' : 'success') : 'failed',
+        status: result.ok ? result.status : 'failed',
         message: result.message,
     };
 }
