@@ -3,6 +3,7 @@ import { CommandExecutionError, EmptyResultError } from '@jackwener/opencli/erro
 import {
   assertLinkedInAuthenticated,
   assertSafeLinkedinUrl,
+  normalizeHttpUrl,
   normalizeWhitespace,
   unwrapEvaluateResult,
 } from './shared.js';
@@ -34,10 +35,10 @@ function decodeLinkedInSafetyUrl(value) {
   try {
     const parsed = new URL(url);
     if (parsed.hostname.endsWith('linkedin.com') && parsed.pathname === '/safety/go/') {
-      return parsed.searchParams.get('url') || url;
+      return normalizeHttpUrl(parsed.searchParams.get('url') || '');
     }
   } catch {}
-  return url;
+  return normalizeHttpUrl(url);
 }
 
 function isChromeLine(line) {
@@ -161,11 +162,19 @@ function buildExperienceExtractionScript() {
       try {
         const parsed = new URL(value, location.origin);
         if (parsed.hostname.endsWith('linkedin.com') && parsed.pathname === '/safety/go/') {
-          return parsed.searchParams.get('url') || parsed.toString();
+          const decoded = parsed.searchParams.get('url') || '';
+          try {
+            const target = new URL(decoded, location.origin);
+            if (target.protocol === 'http:' || target.protocol === 'https:') return target.toString();
+            return '';
+          } catch {
+            return '';
+          }
         }
-        return parsed.toString();
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+        return '';
       } catch {
-        return value;
+        return '';
       }
     };
     const parseDateParts = (dateLine) => {
@@ -397,11 +406,19 @@ function buildDialogExtractionScript() {
       try {
         const parsed = new URL(value, location.origin);
         if (parsed.hostname.endsWith('linkedin.com') && parsed.pathname === '/safety/go/') {
-          return parsed.searchParams.get('url') || parsed.toString();
+          const decoded = parsed.searchParams.get('url') || '';
+          try {
+            const target = new URL(decoded, location.origin);
+            if (target.protocol === 'http:' || target.protocol === 'https:') return target.toString();
+            return '';
+          } catch {
+            return '';
+          }
         }
-        return parsed.toString();
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+        return '';
       } catch {
-        return value;
+        return '';
       }
     };
     const dialog = document.querySelector('dialog[open], dialog[data-testid="dialog"]') || document.querySelector('[role="dialog"]');
@@ -648,5 +665,7 @@ export const __test__ = {
   parseLocationLine,
   parseExperienceText,
   parseExperienceSectionText,
+  buildExperienceExtractionScript,
+  buildDialogExtractionScript,
   normalizeExperience,
 };

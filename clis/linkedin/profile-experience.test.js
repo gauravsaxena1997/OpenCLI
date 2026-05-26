@@ -12,6 +12,8 @@ const {
   parseLocationLine,
   parseExperienceText,
   parseExperienceSectionText,
+  buildExperienceExtractionScript,
+  buildDialogExtractionScript,
   normalizeExperience,
 } = await import('./profile-experience.js').then((m) => m.__test__);
 
@@ -138,5 +140,13 @@ Who your viewers also viewed`, 'https://www.linkedin.com/in/gauravsaxena1997/');
   it('decodes LinkedIn safety redirect URLs', () => {
     expect(decodeLinkedInSafetyUrl('https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fexample.com%2Fdemo&urlhash=x'))
       .toBe('https://example.com/demo');
+    expect(decodeLinkedInSafetyUrl('https://www.linkedin.com/safety/go/?url=javascript%3Aalert(1)&urlhash=x'))
+      .toBe('');
+    expect(decodeLinkedInSafetyUrl('javascript:alert(1)')).toBe('');
+  });
+
+  it('builds browser extraction scripts that parse as JavaScript', () => {
+    expect(() => new Function(buildExperienceExtractionScript())).not.toThrow();
+    expect(() => new Function(buildDialogExtractionScript())).not.toThrow();
   });
 });
