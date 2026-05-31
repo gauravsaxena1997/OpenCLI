@@ -142,14 +142,14 @@ cli({
             throw new CommandExecutionError('Browser session required for twitter follow-batch');
         }
 
+        const usernames = parseBatchUsernames(kwargs.usernames);
+        const delayMs = parseDelayMs(kwargs['delay-ms']);
         const cookies = await page.getCookies({ url: 'https://x.com' });
         const ct0 = cookies.find((cookie) => cookie.name === 'ct0')?.value || null;
         if (!ct0) {
             throw new AuthRequiredError('x.com', 'Not logged into x.com (no ct0 cookie)');
         }
 
-        const usernames = parseBatchUsernames(kwargs.usernames);
-        const delayMs = parseDelayMs(kwargs['delay-ms']);
         const rows = [];
         for (const [index, username] of usernames.entries()) {
             if (index > 0 && delayMs > 0) {

@@ -99,6 +99,20 @@ describe('twitter follow-batch command', () => {
         expect(page.goto).not.toHaveBeenCalled();
     });
 
+    it('rejects invalid batch input before reading browser authentication state', async () => {
+        const cmd = getRegistry().get('twitter/follow-batch');
+        const page = {
+            goto: vi.fn(),
+            wait: vi.fn(),
+            getCookies: vi.fn(),
+            evaluate: vi.fn(),
+        };
+
+        await expect(cmd.func(page, { usernames: 'valid,not/valid' })).rejects.toBeInstanceOf(ArgumentError);
+        expect(page.getCookies).not.toHaveBeenCalled();
+        expect(page.goto).not.toHaveBeenCalled();
+    });
+
     it('refreshes the profile before reporting a failed post-click verification', async () => {
         const page = {
             goto: vi.fn().mockResolvedValue(undefined),
