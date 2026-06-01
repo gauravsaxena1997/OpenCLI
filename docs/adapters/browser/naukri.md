@@ -12,6 +12,8 @@ profile fields.
 | Command | Description |
 |---------|-------------|
 | `opencli naukri profile-read` | Read visible Naukri candidate profile sections |
+| `opencli naukri recommended-jobs` | Read visible Naukri recommended job cards across recommended-job tabs |
+| `opencli naukri hide-recommended-job --job-id <id>` | Verify or hide one recommended job card |
 | `opencli naukri resume-upload <file>` | Upload a resume file and verify the saved filename |
 | `opencli naukri headline-set --text <text>` | Update the resume headline and verify readback |
 | `opencli naukri summary-set --text <text>` | Update the profile summary and verify readback |
@@ -37,6 +39,24 @@ profile fields.
 ```bash
 # Read the logged-in profile
 opencli naukri profile-read -f json
+
+# Review recommended jobs across the four visible recommendation tabs
+opencli naukri recommended-jobs --tabs all --limit-per-tab 25 -f json
+
+# Review only selected tabs
+opencli naukri recommended-jobs --tabs profile,top-candidate --limit-per-tab 10 -f json
+
+# Verify a recommended-job hide target without changing the feed
+opencli naukri hide-recommended-job --job-id 220526012693 --title "Fullstack Developer" -f json
+
+# Hide a recommended job after the job-id and title/company guard match
+opencli naukri hide-recommended-job \
+  --job-id 220526012693 \
+  --title "Fullstack Developer" \
+  --company "Digitide Solutions" \
+  --settle-seconds 5 \
+  --execute \
+  -f json
 
 # Upload a resume file
 opencli naukri resume-upload ~/Downloads/resume.pdf -f json
@@ -98,6 +118,8 @@ opencli naukri projects-update \
 | Command | Columns |
 |---------|---------|
 | `profile-read` | `profile_url, name, current_title, current_company, profile_last_updated, profile_completion, photo_status, location, total_experience, current_salary, phone, email, notice_status, resume_file, resume_uploaded_on, resume_headline, key_skills, employment, education, it_skills, projects, profile_summary, accomplishments, career_profile, personal_details, diversity_inclusion` |
+| `recommended-jobs` | `tab, rank, title, company, location, experience, salary, posted, description, skills, recruiter_or_posted_by, company_rating, reviews_count, work_mode, notice_period_signal, apply_state, is_selected, can_select, job_url, job_id, source_url, raw_text` |
+| `hide-recommended-job` | `status, job_id, title, company, tab, action` |
 | `resume-upload` | `status, resume_file, resume_uploaded_on` |
 | `headline-set` | `status, resume_headline` |
 | `summary-set` | `status, profile_summary` |
@@ -119,6 +141,24 @@ opencli naukri projects-update \
 | `projects-update` | `status, title, role, skills` |
 
 ## Args
+
+### `recommended-jobs`
+
+| Arg | Type | Default | Notes |
+|-----|------|---------|-------|
+| `--tabs` | string | `all` | Comma-separated tabs: `all`, `profile`, `top-candidate`, `preferences`, `you-might-like` |
+| `--limit-per-tab` | int | `25` | Max job cards per selected tab, 1-100. With all four tabs selected, the default returns up to 100 rows and the hard maximum is 400 rows |
+
+### `hide-recommended-job`
+
+| Arg | Type | Default | Notes |
+|-----|------|---------|-------|
+| `--job-id` | string | — | Required. Use `job_id` from `recommended-jobs` output |
+| `--title` | string | — | Optional guard. With `--execute`, either `--title` or `--company` is required |
+| `--company` | string | — | Optional guard. With `--execute`, either `--title` or `--company` is required |
+| `--tabs` | string | `all` | Comma-separated tabs to search before hiding |
+| `--settle-seconds` | int | `5` | Seconds to wait after clicking Hide before verifying, 1-15 |
+| `--execute` | boolean | `false` | Actually click Hide. Without it the command only verifies the target |
 
 ### `resume-upload`
 
@@ -256,6 +296,14 @@ not authenticated, open `https://www.naukri.com/`, sign in, and retry.
 ## Limitations
 
 - The adapter targets the candidate profile pages on `www.naukri.com`.
+- `recommended-jobs` is read-only and does not click apply. It reads rendered
+  job cards from the logged-in recommended jobs surface. The supported tabs are
+  `Profile`, `Top Candidate`, `Preferences`, and `You might like`.
+- `recommended-jobs` does not score or shortlist jobs. Downstream workflows can
+  use the structured rows to rank jobs against user-specific preferences.
+- `hide-recommended-job` changes the logged-in recommendation feed only when
+  `--execute` is passed. Execute mode requires a title or company guard in
+  addition to `--job-id`.
 - Write commands interact with the rendered profile UI, so selector changes or
   A/B-tested profile modals may require adapter updates.
 - Key-skill writes are limited by Naukri's own allowed labels and profile skill

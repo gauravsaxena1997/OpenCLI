@@ -1,6 +1,7 @@
 import { AuthRequiredError, CommandExecutionError, ArgumentError } from '@jackwener/opencli/errors';
 
 export const NAUKRI_PROFILE_URL = 'https://www.naukri.com/mnjuser/profile';
+export const NAUKRI_RECOMMENDED_JOBS_URL = 'https://www.naukri.com/mnjuser/recommendedjobs';
 export const IT_SKILLS_LIMIT = 10;
 
 export const PROFILE_COLUMNS = [
@@ -52,6 +53,15 @@ export function normalizeWhitespace(value) {
     .replace(/[\u00a0\u202f]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+export function looksLikeNaukriAuthWall(payload) {
+  const title = normalizeWhitespace(typeof payload === 'object' ? payload?.title : '').toLowerCase();
+  const url = normalizeWhitespace(typeof payload === 'object' ? payload?.url : '').toLowerCase();
+  const text = normalizeWhitespace(typeof payload === 'object' ? payload?.text : payload).toLowerCase();
+  return /login|sign in|signin|register/.test(title)
+    || /\/(?:nlogin|login|signin|registration)\b/.test(url)
+    || (/\b(login|sign in|signin|register)\b/.test(text) && !/\b(profile|resume headline|recommended jobs|apply)\b/.test(text));
 }
 
 export function requireText(value, fieldName, maxLength) {

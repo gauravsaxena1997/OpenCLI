@@ -19996,6 +19996,68 @@
   },
   {
     "site": "naukri",
+    "name": "hide-recommended-job",
+    "description": "Hide one visible Naukri recommended job by job id, with optional title/company guards",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "job-id",
+        "type": "str",
+        "required": true,
+        "help": "Naukri job id from recommended-jobs output"
+      },
+      {
+        "name": "title",
+        "type": "str",
+        "required": false,
+        "help": "Optional title guard; command fails if the matched card does not contain it"
+      },
+      {
+        "name": "company",
+        "type": "str",
+        "required": false,
+        "help": "Optional company guard; command fails if the matched card does not contain it"
+      },
+      {
+        "name": "tabs",
+        "type": "string",
+        "default": "all",
+        "required": false,
+        "help": "Comma-separated tabs to search before hiding: all, profile, top-candidate, preferences, you-might-like"
+      },
+      {
+        "name": "settle-seconds",
+        "type": "int",
+        "default": 5,
+        "required": false,
+        "help": "Seconds to wait after clicking Hide before verifying, 1-15"
+      },
+      {
+        "name": "execute",
+        "type": "boolean",
+        "default": false,
+        "required": false,
+        "help": "Actually click Hide. Without it the command only verifies the target."
+      }
+    ],
+    "columns": [
+      "status",
+      "job_id",
+      "title",
+      "company",
+      "tab",
+      "action"
+    ],
+    "type": "js",
+    "modulePath": "naukri/hide-recommended-job.js",
+    "sourceFile": "naukri/hide-recommended-job.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
     "name": "it-skills-delete",
     "description": "Delete one Naukri IT skill by exact skill/software label",
     "access": "write",
@@ -20530,6 +20592,59 @@
     "type": "js",
     "modulePath": "naukri/projects-update.js",
     "sourceFile": "naukri/projects-update.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "recommended-jobs",
+    "description": "Read visible Naukri recommended job cards across profile, top-candidate, preferences, and you-might-like tabs",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "tabs",
+        "type": "string",
+        "default": "all",
+        "required": false,
+        "help": "Comma-separated tabs: all, profile, top-candidate, preferences, you-might-like"
+      },
+      {
+        "name": "limit-per-tab",
+        "type": "int",
+        "default": 25,
+        "required": false,
+        "help": "Max job cards per selected tab, 1-100"
+      }
+    ],
+    "columns": [
+      "tab",
+      "rank",
+      "title",
+      "company",
+      "location",
+      "experience",
+      "salary",
+      "posted",
+      "description",
+      "skills",
+      "recruiter_or_posted_by",
+      "company_rating",
+      "reviews_count",
+      "work_mode",
+      "notice_period_signal",
+      "apply_state",
+      "is_selected",
+      "can_select",
+      "job_url",
+      "job_id",
+      "source_url",
+      "raw_text"
+    ],
+    "type": "js",
+    "modulePath": "naukri/recommended-jobs.js",
+    "sourceFile": "naukri/recommended-jobs.js",
     "navigateBefore": false
   },
   {
