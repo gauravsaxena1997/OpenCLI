@@ -19827,6 +19827,879 @@
     "navigateBefore": "https://mubu.com"
   },
   {
+    "site": "naukri",
+    "name": "employment-add-current",
+    "description": "Add a current Naukri employment entry and verify it appears in employment history",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "title",
+        "type": "str",
+        "required": true,
+        "help": "Current job title"
+      },
+      {
+        "name": "company",
+        "type": "str",
+        "required": true,
+        "help": "Current company name"
+      },
+      {
+        "name": "start-year",
+        "type": "str",
+        "required": true,
+        "help": "Joining year"
+      },
+      {
+        "name": "start-month",
+        "type": "str",
+        "required": true,
+        "help": "Joining month number or name"
+      },
+      {
+        "name": "total-years",
+        "type": "int",
+        "default": 6,
+        "required": false,
+        "help": "Total profile experience years"
+      },
+      {
+        "name": "total-months",
+        "type": "int",
+        "default": 6,
+        "required": false,
+        "help": "Total profile experience months"
+      },
+      {
+        "name": "salary",
+        "type": "str",
+        "default": "25,00,000",
+        "required": false,
+        "help": "Current salary amount without currency symbol"
+      },
+      {
+        "name": "notice-period",
+        "type": "str",
+        "default": "1",
+        "required": false,
+        "help": "Naukri notice period id; 1 means 15 Days or less"
+      },
+      {
+        "name": "skills",
+        "type": "str",
+        "required": true,
+        "help": "Comma-separated top skills used"
+      },
+      {
+        "name": "description",
+        "type": "str",
+        "required": true,
+        "help": "Job profile description"
+      }
+    ],
+    "columns": [
+      "status",
+      "title",
+      "company"
+    ],
+    "type": "js",
+    "modulePath": "naukri/employment-add-current.js",
+    "sourceFile": "naukri/employment-add-current.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "employment-end",
+    "description": "Mark a Naukri employment entry as previous employment with a worked-till month/year",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "company",
+        "type": "str",
+        "required": true,
+        "help": "Company name substring to update"
+      },
+      {
+        "name": "end-year",
+        "type": "str",
+        "required": true,
+        "help": "Worked till year"
+      },
+      {
+        "name": "end-month",
+        "type": "str",
+        "required": true,
+        "help": "Worked till month number or name"
+      }
+    ],
+    "columns": [
+      "status",
+      "company",
+      "worked_till"
+    ],
+    "type": "js",
+    "modulePath": "naukri/employment-end.js",
+    "sourceFile": "naukri/employment-end.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "employment-list",
+    "description": "List visible Naukri employment entries",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [],
+    "columns": [
+      "rank",
+      "id",
+      "title",
+      "company",
+      "text"
+    ],
+    "type": "js",
+    "modulePath": "naukri/employment-add-current.js",
+    "sourceFile": "naukri/employment-add-current.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "headline-set",
+    "description": "Update the logged-in Naukri resume headline and verify it was saved",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "text",
+        "type": "string",
+        "required": true,
+        "help": "New resume headline text"
+      }
+    ],
+    "columns": [
+      "status",
+      "resume_headline"
+    ],
+    "type": "js",
+    "modulePath": "naukri/headline-set.js",
+    "sourceFile": "naukri/headline-set.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "hide-recommended-job",
+    "description": "Hide one visible Naukri recommended job by job id, with optional title/company guards",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "job-id",
+        "type": "str",
+        "required": true,
+        "help": "Naukri job id from recommended-jobs output"
+      },
+      {
+        "name": "title",
+        "type": "str",
+        "required": false,
+        "help": "Optional title guard; command fails if the matched card does not contain it"
+      },
+      {
+        "name": "company",
+        "type": "str",
+        "required": false,
+        "help": "Optional company guard; command fails if the matched card does not contain it"
+      },
+      {
+        "name": "tabs",
+        "type": "string",
+        "default": "all",
+        "required": false,
+        "help": "Comma-separated tabs to search before hiding: all, profile, top-candidate, preferences, you-might-like"
+      },
+      {
+        "name": "settle-seconds",
+        "type": "int",
+        "default": 5,
+        "required": false,
+        "help": "Seconds to wait after clicking Hide before verifying, 1-15"
+      },
+      {
+        "name": "execute",
+        "type": "boolean",
+        "default": false,
+        "required": false,
+        "help": "Actually click Hide. Without it the command only verifies the target."
+      }
+    ],
+    "columns": [
+      "status",
+      "job_id",
+      "title",
+      "company",
+      "tab",
+      "action"
+    ],
+    "type": "js",
+    "modulePath": "naukri/hide-recommended-job.js",
+    "sourceFile": "naukri/hide-recommended-job.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "it-skills-delete",
+    "description": "Delete one Naukri IT skill by exact skill/software label",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "skill",
+        "type": "str",
+        "required": true,
+        "help": "Exact IT skill/software label to delete"
+      }
+    ],
+    "columns": [
+      "status",
+      "skill"
+    ],
+    "type": "js",
+    "modulePath": "naukri/it-skills-delete.js",
+    "sourceFile": "naukri/it-skills-delete.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "it-skills-list",
+    "description": "List current Naukri IT skills with version, last used year, and experience",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [],
+    "columns": [
+      "rank",
+      "id",
+      "skill",
+      "version",
+      "last_used",
+      "experience_years",
+      "experience_months"
+    ],
+    "type": "js",
+    "modulePath": "naukri/it-skills-list.js",
+    "sourceFile": "naukri/it-skills-list.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "it-skills-resolve",
+    "description": "Resolve desired Naukri IT skill/software labels against the autocomplete without saving changes",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "skills",
+        "type": "str",
+        "required": true,
+        "help": "Comma, semicolon, or newline separated desired IT skill/software labels"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 8,
+        "required": false,
+        "help": "Max suggestions to inspect per skill (1-15)"
+      }
+    ],
+    "columns": [
+      "input",
+      "resolved",
+      "status",
+      "confidence",
+      "alternatives"
+    ],
+    "type": "js",
+    "modulePath": "naukri/it-skills-resolve.js",
+    "sourceFile": "naukri/it-skills-resolve.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "it-skills-set",
+    "description": "Replace Naukri IT skills with an explicit JSON array and verify the saved rows",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "items",
+        "type": "str",
+        "required": true,
+        "help": "JSON array of {skill,version,last_used,years,months}"
+      }
+    ],
+    "columns": [
+      "status",
+      "skills",
+      "missing",
+      "extra"
+    ],
+    "type": "js",
+    "modulePath": "naukri/it-skills-set.js",
+    "sourceFile": "naukri/it-skills-set.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "it-skills-upsert",
+    "description": "Create or update one Naukri IT skill with version, last used year, and experience",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "skill",
+        "type": "str",
+        "required": true,
+        "help": "Naukri IT skill/software label"
+      },
+      {
+        "name": "match-skill",
+        "type": "str",
+        "default": "",
+        "required": false,
+        "help": "Optional existing skill/software label to edit instead of matching --skill"
+      },
+      {
+        "name": "version",
+        "type": "str",
+        "default": "",
+        "required": false,
+        "help": "Optional software version"
+      },
+      {
+        "name": "last-used",
+        "type": "str",
+        "required": true,
+        "help": "Last used year, for example 2026"
+      },
+      {
+        "name": "years",
+        "type": "int",
+        "default": 0,
+        "required": false,
+        "help": "Experience years"
+      },
+      {
+        "name": "months",
+        "type": "int",
+        "default": 0,
+        "required": false,
+        "help": "Experience months"
+      }
+    ],
+    "columns": [
+      "status",
+      "skill",
+      "version",
+      "last_used",
+      "experience_years",
+      "experience_months"
+    ],
+    "type": "js",
+    "modulePath": "naukri/it-skills-upsert.js",
+    "sourceFile": "naukri/it-skills-upsert.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "key-skills-list",
+    "description": "List current logged-in Naukri key skill chips",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [],
+    "columns": [
+      "rank",
+      "skill"
+    ],
+    "type": "js",
+    "modulePath": "naukri/key-skills-list.js",
+    "sourceFile": "naukri/key-skills-list.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "key-skills-resolve",
+    "description": "Resolve desired key skills against Naukri autocomplete labels without saving changes",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "skills",
+        "type": "str",
+        "required": true,
+        "help": "Comma, semicolon, or newline separated desired skill labels"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 8,
+        "required": false,
+        "help": "Max suggestions to inspect per skill (1-15)"
+      }
+    ],
+    "columns": [
+      "input",
+      "resolved",
+      "status",
+      "confidence",
+      "alternatives"
+    ],
+    "type": "js",
+    "modulePath": "naukri/it-skills-resolve.js",
+    "sourceFile": "naukri/it-skills-resolve.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "key-skills-set",
+    "description": "Replace Naukri key skills and verify the final saved chips",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "skills",
+        "type": "str",
+        "required": true,
+        "help": "Comma, semicolon, or newline separated final Naukri key skill labels"
+      }
+    ],
+    "columns": [
+      "status",
+      "skills",
+      "missing",
+      "extra"
+    ],
+    "type": "js",
+    "modulePath": "naukri/key-skills-set.js",
+    "sourceFile": "naukri/key-skills-set.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "key-skills-suggest",
+    "description": "Inspect Naukri key-skill autocomplete suggestions without saving changes",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "query",
+        "type": "str",
+        "required": true,
+        "help": "Skill query to type into the Naukri key-skill autocomplete"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 10,
+        "required": false,
+        "help": "Max suggestions to return (1-25)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "suggestion",
+      "source",
+      "endpoint"
+    ],
+    "type": "js",
+    "modulePath": "naukri/key-skills-suggest.js",
+    "sourceFile": "naukri/key-skills-suggest.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "profile-read",
+    "description": "Read the logged-in Naukri jobseeker profile sections from Mynaukri",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [],
+    "columns": [
+      "profile_url",
+      "name",
+      "current_title",
+      "current_company",
+      "profile_last_updated",
+      "profile_completion",
+      "photo_status",
+      "location",
+      "total_experience",
+      "current_salary",
+      "phone",
+      "email",
+      "notice_status",
+      "resume_file",
+      "resume_uploaded_on",
+      "resume_headline",
+      "key_skills",
+      "employment",
+      "education",
+      "it_skills",
+      "projects",
+      "profile_summary",
+      "accomplishments",
+      "career_profile",
+      "personal_details",
+      "diversity_inclusion"
+    ],
+    "type": "js",
+    "modulePath": "naukri/profile-read.js",
+    "sourceFile": "naukri/profile-read.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "projects-add",
+    "description": "Add a Naukri profile project with required deterministic fields",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "title",
+        "type": "str",
+        "required": true,
+        "help": "Project title"
+      },
+      {
+        "name": "client",
+        "type": "str",
+        "required": true,
+        "help": "Client name"
+      },
+      {
+        "name": "status",
+        "type": "str",
+        "default": "finished",
+        "required": false,
+        "help": "finished or in progress"
+      },
+      {
+        "name": "start-year",
+        "type": "str",
+        "required": true,
+        "help": "Start year"
+      },
+      {
+        "name": "start-month",
+        "type": "str",
+        "required": true,
+        "help": "Start month number or name"
+      },
+      {
+        "name": "end-year",
+        "type": "str",
+        "required": false,
+        "help": "End year for finished projects"
+      },
+      {
+        "name": "end-month",
+        "type": "str",
+        "required": false,
+        "help": "End month number or name for finished projects"
+      },
+      {
+        "name": "details",
+        "type": "str",
+        "required": true,
+        "help": "Project details text"
+      }
+    ],
+    "columns": [
+      "status",
+      "title"
+    ],
+    "type": "js",
+    "modulePath": "naukri/projects-add.js",
+    "sourceFile": "naukri/projects-add.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "projects-list",
+    "description": "List visible Naukri profile projects",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [],
+    "columns": [
+      "rank",
+      "title",
+      "text"
+    ],
+    "type": "js",
+    "modulePath": "naukri/projects-add.js",
+    "sourceFile": "naukri/projects-add.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "projects-options",
+    "description": "Inspect live Naukri project modal dropdown options and skill suggestions without saving",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "match-title",
+        "type": "str",
+        "required": false,
+        "help": "Existing project title to inspect; opens add modal when omitted"
+      },
+      {
+        "name": "skill-query",
+        "type": "str",
+        "required": false,
+        "help": "Optional project-skill query to resolve against live suggestions"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max options per dropdown or suggestions to return (1-50)"
+      }
+    ],
+    "columns": [
+      "kind",
+      "id",
+      "current",
+      "value",
+      "label"
+    ],
+    "type": "js",
+    "modulePath": "naukri/projects-options.js",
+    "sourceFile": "naukri/projects-options.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "projects-update",
+    "description": "Update optional Naukri project fields using live dropdown and autocomplete resolution",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "match-title",
+        "type": "str",
+        "required": true,
+        "help": "Existing project title to update"
+      },
+      {
+        "name": "tag",
+        "type": "str",
+        "required": false,
+        "help": "Employment or education label to tag, resolved against live dropdown options"
+      },
+      {
+        "name": "location",
+        "type": "str",
+        "required": false,
+        "help": "Project location text"
+      },
+      {
+        "name": "location-mode",
+        "type": "str",
+        "required": false,
+        "help": "offsite, onsite, or remote"
+      },
+      {
+        "name": "nature",
+        "type": "str",
+        "required": false,
+        "help": "full-time, part-time, or contractual"
+      },
+      {
+        "name": "team-size",
+        "type": "str",
+        "required": false,
+        "help": "Team size option label"
+      },
+      {
+        "name": "role",
+        "type": "str",
+        "required": false,
+        "help": "Role label, resolved against live role dropdown options"
+      },
+      {
+        "name": "role-description",
+        "type": "str",
+        "required": false,
+        "help": "Role description text"
+      },
+      {
+        "name": "details",
+        "type": "str",
+        "required": false,
+        "help": "Project details text"
+      },
+      {
+        "name": "skills",
+        "type": "str",
+        "required": false,
+        "help": "Comma-separated skills to resolve against project skill autocomplete"
+      }
+    ],
+    "columns": [
+      "status",
+      "title",
+      "role",
+      "skills"
+    ],
+    "type": "js",
+    "modulePath": "naukri/projects-update.js",
+    "sourceFile": "naukri/projects-update.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "recommended-jobs",
+    "description": "Read visible Naukri recommended job cards across profile, top-candidate, preferences, and you-might-like tabs",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "tabs",
+        "type": "string",
+        "default": "all",
+        "required": false,
+        "help": "Comma-separated tabs: all, profile, top-candidate, preferences, you-might-like"
+      },
+      {
+        "name": "limit-per-tab",
+        "type": "int",
+        "default": 25,
+        "required": false,
+        "help": "Max job cards per selected tab, 1-100"
+      }
+    ],
+    "columns": [
+      "tab",
+      "rank",
+      "title",
+      "company",
+      "location",
+      "experience",
+      "salary",
+      "posted",
+      "description",
+      "skills",
+      "recruiter_or_posted_by",
+      "company_rating",
+      "reviews_count",
+      "work_mode",
+      "notice_period_signal",
+      "apply_state",
+      "is_selected",
+      "can_select",
+      "job_url",
+      "job_id",
+      "source_url",
+      "raw_text"
+    ],
+    "type": "js",
+    "modulePath": "naukri/recommended-jobs.js",
+    "sourceFile": "naukri/recommended-jobs.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "resume-upload",
+    "description": "Upload a resume file to the logged-in Naukri profile and verify the uploaded filename",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "file",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Resume file path (doc, docx, rtf, pdf; max 2 MB)"
+      }
+    ],
+    "columns": [
+      "status",
+      "resume_file",
+      "resume_uploaded_on"
+    ],
+    "type": "js",
+    "modulePath": "naukri/resume-upload.js",
+    "sourceFile": "naukri/resume-upload.js",
+    "navigateBefore": false
+  },
+  {
+    "site": "naukri",
+    "name": "summary-set",
+    "description": "Update the logged-in Naukri profile summary and verify it was saved",
+    "access": "write",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "text",
+        "type": "string",
+        "required": true,
+        "help": "New profile summary text"
+      }
+    ],
+    "columns": [
+      "status",
+      "profile_summary"
+    ],
+    "type": "js",
+    "modulePath": "naukri/summary-set.js",
+    "sourceFile": "naukri/summary-set.js",
+    "navigateBefore": false
+  },
+  {
     "site": "notebooklm",
     "name": "add-source",
     "description": "Add a URL, text, or local file source to an existing NotebookLM notebook",
