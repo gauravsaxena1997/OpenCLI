@@ -20231,6 +20231,57 @@
   },
   {
     "site": "naukri",
+    "name": "job-detail",
+    "description": "Read one Naukri job detail through direct session-authenticated fetch, without UI clicking",
+    "access": "read",
+    "domain": "www.naukri.com",
+    "strategy": "cookie",
+    "browser": true,
+    "args": [
+      {
+        "name": "job-url-or-job-id",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "Naukri job detail URL or numeric job id from recommended-jobs/search output"
+      },
+      {
+        "name": "transport",
+        "type": "string",
+        "default": "session-fetch",
+        "required": false,
+        "help": "Detail transport. session-fetch reuses browser session cookies without pointer automation.",
+        "choices": [
+          "session-fetch"
+        ]
+      }
+    ],
+    "columns": [
+      "job_id",
+      "title",
+      "company",
+      "location",
+      "experience",
+      "salary",
+      "posted",
+      "description",
+      "skills",
+      "recruiter_or_posted_by",
+      "company_url",
+      "company_profile",
+      "apply_url",
+      "apply_state",
+      "source_quality",
+      "source_url",
+      "raw_text"
+    ],
+    "type": "js",
+    "modulePath": "naukri/job-detail.js",
+    "sourceFile": "naukri/job-detail.js",
+    "navigateBefore": "https://www.naukri.com"
+  },
+  {
+    "site": "naukri",
     "name": "key-skills-list",
     "description": "List current logged-in Naukri key skill chips",
     "access": "read",
