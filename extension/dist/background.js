@@ -1025,7 +1025,7 @@ async function focusOwnedWindowIfRequested(windowId, mode) {
 async function toOwnedContainerGroupCandidate(group) {
   try {
     const chromeWindow = await chrome.windows.get(group.windowId);
-    const reusableTabId = await findReusableOwnedContainerTab(group.windowId);
+    const reusableTabId = await findReusableOwnedContainerTab(group.windowId, group.id);
     return {
       id: group.id,
       windowId: group.windowId,
@@ -1069,6 +1069,25 @@ async function collectOwnedGroupCandidates(role) {
       if (typeof groupId !== "number" || groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) continue;
       const group = await chrome.tabGroups.get(groupId);
       groupsById.set(group.id, group);
+    } catch {
+    }
+  }
+  const ownedPreferredTabIds = /* @__PURE__ */ new Set();
+  for (const [leaseKey, session] of automationSessions.entries()) {
+    if (!session.owned || getOwnedWindowRole(leaseKey) !== role || session.preferredTabId === null) continue;
+    ownedPreferredTabIds.add(session.preferredTabId);
+  }
+  if (ownedPreferredTabIds.size > 0) {
+    try {
+      const allGroups = await chrome.tabGroups.query({});
+      for (const group of allGroups) {
+        if (group.title) continue;
+        if (groupsById.has(group.id)) continue;
+        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        if (tabsInGroup.some((tab) => tab.id !== void 0 && ownedPreferredTabIds.has(tab.id))) {
+          groupsById.set(group.id, group);
+        }
+      }
     } catch {
     }
   }
@@ -1128,23 +1147,20 @@ async function attachTabsToOwnedGroup(role, group, ids) {
   updateOwnedSessionWindowForTabs(role, ids, group.windowId);
   return group;
 }
-async function createOwnedGroupWithRollback(role, windowId, ids) {
+async function createOwnedGroup(role, windowId, ids) {
   if (ids.length === 0) throw new Error(`Cannot create ${role} tab group without tabs`);
   await ensureTabsInWindow(ids, windowId);
   const groupId = await chrome.tabs.group({ tabIds: ids, createProperties: { windowId } });
-  try {
-    const group = await chrome.tabGroups.update(groupId, {
-      color: AUTOMATION_TAB_GROUP_COLOR,
-      title: CONTAINER_TAB_GROUP_TITLE[role],
-      collapsed: false
-    });
-    updateOwnedSessionWindowForTabs(role, ids, group.windowId);
-    return { id: group.id, windowId: group.windowId, title: group.title };
-  } catch (err) {
-    await chrome.tabs.ungroup(ids).catch(() => {
-    });
-    throw err;
-  }
+  ownedContainers[role].groupId = groupId;
+  ownedContainers[role].windowId = windowId;
+  await persistRuntimeState();
+  const group = await chrome.tabGroups.update(groupId, {
+    color: AUTOMATION_TAB_GROUP_COLOR,
+    title: CONTAINER_TAB_GROUP_TITLE[role],
+    collapsed: false
+  });
+  updateOwnedSessionWindowForTabs(role, ids, group.windowId);
+  return { id: group.id, windowId: group.windowId, title: group.title };
 }
 async function ensureOwnedContainerGroup(role, fallbackWindowId, tabIds) {
   const ids = [...new Set(tabIds.filter((id) => id !== void 0))];
@@ -1167,7 +1183,7 @@ async function ensureOwnedContainerGroupUnlocked(role, fallbackWindowId, ids) {
       canonical = await ensureCanonicalGroupTitle(role, canonical);
       canonical = await attachTabsToOwnedGroup(role, canonical, ids);
     } else if (fallbackWindowId !== null && ids.length > 0) {
-      canonical = await createOwnedGroupWithRollback(role, fallbackWindowId, ids);
+      canonical = await createOwnedGroup(role, fallbackWindowId, ids);
     }
     if (canonical) {
       ownedContainers[role].windowId = canonical.windowId;
@@ -1198,14 +1214,14 @@ async function ensureOwnedContainerWindowUnlocked(role, initialUrl, mode = "back
       const group2 = await ensureOwnedContainerGroup(role, container.windowId, []);
       if (group2) {
         await focusOwnedWindowIfRequested(group2.windowId, mode);
-        const initialTabId3 = await findReusableOwnedContainerTab(group2.windowId);
+        const initialTabId3 = await findReusableOwnedContainerTab(group2.windowId, group2.id);
         return {
           windowId: group2.windowId,
           initialTabId: initialTabId3
         };
       }
       await focusOwnedWindowIfRequested(container.windowId, mode);
-      const initialTabId2 = await findReusableOwnedContainerTab(container.windowId);
+      const initialTabId2 = await findReusableOwnedContainerTab(container.windowId, null);
       const createdGroup = await ensureOwnedContainerGroup(role, container.windowId, [initialTabId2]);
       if (createdGroup) {
         return {
@@ -1225,7 +1241,7 @@ async function ensureOwnedContainerWindowUnlocked(role, initialUrl, mode = "back
   const existingGroup = await ensureOwnedContainerGroup(role, null, []);
   if (existingGroup) {
     await focusOwnedWindowIfRequested(existingGroup.windowId, mode);
-    const initialTabId2 = await findReusableOwnedContainerTab(existingGroup.windowId);
+    const initialTabId2 = await findReusableOwnedContainerTab(existingGroup.windowId, existingGroup.id);
     await persistRuntimeState();
     return {
       windowId: existingGroup.windowId,
@@ -1241,6 +1257,7 @@ async function ensureOwnedContainerWindowUnlocked(role, initialUrl, mode = "back
     type: "normal"
   });
   container.windowId = win.id;
+  await persistRuntimeState();
   console.log(`[opencli] Created owned ${role} window ${container.windowId} (start=${startUrl})`);
   const tabs = await chrome.tabs.query({ windowId: win.id });
   const initialTabId = tabs[0]?.id;
@@ -1266,11 +1283,11 @@ async function ensureOwnedContainerWindowUnlocked(role, initialUrl, mode = "back
   await persistRuntimeState();
   return { windowId: group?.windowId ?? container.windowId, initialTabId };
 }
-async function findReusableOwnedContainerTab(windowId) {
+async function findReusableOwnedContainerTab(windowId, ownedGroupId) {
   try {
     const tabs = await chrome.tabs.query({ windowId });
     const reusable = tabs.find(
-      (tab) => tab.id !== void 0 && initialTabIsAvailable(tab.id) && isDebuggableUrl(tab.url)
+      (tab) => tab.id !== void 0 && initialTabIsAvailable(tab.id) && isDebuggableUrl(tab.url) && (ownedGroupId === void 0 || ownedGroupId !== null && tab.groupId === ownedGroupId || !isSafeNavigationUrl(tab.url ?? ""))
     );
     return reusable?.id;
   } catch {
@@ -1641,10 +1658,13 @@ async function resolveTab(tabId, leaseKey, initialUrl) {
     return createOwnedTabLease(leaseKey, initialUrl);
   }
   const windowId = await getAutomationWindow(leaseKey, initialUrl);
-  const tabs = await chrome.tabs.query({ windowId });
-  const debuggableTab = tabs.find((t) => t.id && isDebuggableUrl(t.url));
-  if (debuggableTab?.id) return { tabId: debuggableTab.id, tab: debuggableTab };
-  const reuseTab = tabs.find((t) => t.id);
+  const role = getOwnedWindowRole(leaseKey);
+  const group = existingSession?.owned ? await ensureOwnedContainerGroup(role, windowId, []) : null;
+  const scopedWindowId = group?.windowId ?? windowId;
+  const reusableTabId = await findReusableOwnedContainerTab(scopedWindowId, existingSession?.owned ? group?.id ?? null : void 0);
+  if (reusableTabId !== void 0) return { tabId: reusableTabId, tab: await chrome.tabs.get(reusableTabId) };
+  const tabs = await chrome.tabs.query({ windowId: scopedWindowId });
+  const reuseTab = existingSession?.owned ? void 0 : tabs.find((t) => t.id);
   if (reuseTab?.id) {
     await chrome.tabs.update(reuseTab.id, { url: BLANK_PAGE });
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -1655,9 +1675,9 @@ async function resolveTab(tabId, leaseKey, initialUrl) {
     } catch {
     }
   }
-  const newTab = await chrome.tabs.create({ windowId, url: BLANK_PAGE, active: true });
+  const newTab = await chrome.tabs.create({ windowId: scopedWindowId, url: BLANK_PAGE, active: true });
   if (!newTab.id) throw new Error("Failed to create tab in automation container");
-  await ensureOwnedContainerGroup(getOwnedWindowRole(leaseKey), windowId, [newTab.id]);
+  await ensureOwnedContainerGroup(role, scopedWindowId, [newTab.id]);
   return { tabId: newTab.id, tab: await chrome.tabs.get(newTab.id) };
 }
 async function pageScopedResult(id, tabId, data) {

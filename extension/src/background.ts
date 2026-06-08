@@ -538,7 +538,7 @@ async function focusOwnedWindowIfRequested(windowId: number, mode: WindowMode): 
 async function toOwnedContainerGroupCandidate(group: chrome.tabGroups.TabGroup): Promise<OwnedContainerGroupCandidate | null> {
   try {
     const chromeWindow = await chrome.windows.get(group.windowId);
-    const reusableTabId = await findReusableOwnedContainerTab(group.windowId);
+    const reusableTabId = await findReusableOwnedContainerTab(group.windowId, group.id);
     return {
       id: group.id,
       windowId: group.windowId,
@@ -590,6 +590,37 @@ async function collectOwnedGroupCandidates(role: OwnedWindowRole): Promise<Owned
       groupsById.set(group.id, group);
     } catch {
       // Lease tabs and browser-session groups can disappear independently.
+    }
+  }
+
+  // 4th layer: scan every window for empty-title orphan groups left behind
+  // when the worker died between `chrome.tabs.group` returning and the
+  // title/color `tabGroups.update` landing. We cannot use color as a signal
+  // (Chrome assigns a default palette color before our update lands), and we
+  // cannot scope by `container.windowId` because the canonical group can
+  // converge into the user window after cross-window moves so `windowId`
+  // would miss the multi-window orphan symptom. Hijack-protected via a
+  // per-role ownership-tab signal: the orphan must contain a tab that is the
+  // `preferredTabId` of a still-registered owned session for this role.
+  // User-built untitled groups never satisfy that condition.
+  const ownedPreferredTabIds = new Set<number>();
+  for (const [leaseKey, session] of automationSessions.entries()) {
+    if (!session.owned || getOwnedWindowRole(leaseKey) !== role || session.preferredTabId === null) continue;
+    ownedPreferredTabIds.add(session.preferredTabId);
+  }
+  if (ownedPreferredTabIds.size > 0) {
+    try {
+      const allGroups = await chrome.tabGroups.query({});
+      for (const group of allGroups) {
+        if (group.title) continue;
+        if (groupsById.has(group.id)) continue;
+        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        if (tabsInGroup.some((tab) => tab.id !== undefined && ownedPreferredTabIds.has(tab.id))) {
+          groupsById.set(group.id, group);
+        }
+      }
+    } catch {
+      // Transient query failure: convergence proceeds with the other layers.
     }
   }
 
@@ -666,7 +697,7 @@ async function attachTabsToOwnedGroup(
   return group;
 }
 
-async function createOwnedGroupWithRollback(
+async function createOwnedGroup(
   role: OwnedWindowRole,
   windowId: number,
   ids: number[],
@@ -674,18 +705,20 @@ async function createOwnedGroupWithRollback(
   if (ids.length === 0) throw new Error(`Cannot create ${role} tab group without tabs`);
   await ensureTabsInWindow(ids, windowId);
   const groupId = await chrome.tabs.group({ tabIds: ids, createProperties: { windowId } });
-  try {
-    const group = await chrome.tabGroups.update(groupId, {
-      color: AUTOMATION_TAB_GROUP_COLOR,
-      title: CONTAINER_TAB_GROUP_TITLE[role],
-      collapsed: false,
-    });
-    updateOwnedSessionWindowForTabs(role, ids, group.windowId);
-    return { id: group.id, windowId: group.windowId, title: group.title };
-  } catch (err) {
-    await chrome.tabs.ungroup(ids).catch(() => {});
-    throw err;
-  }
+  // Persist groupId before the title/color update so a worker crash between
+  // the two API calls can self-heal on resume. `ensureCanonicalGroupTitle`
+  // will repair the title on the next ensure cycle if the update never lands;
+  // we must not `tabs.ungroup` on failure or the persisted id dangles.
+  ownedContainers[role].groupId = groupId;
+  ownedContainers[role].windowId = windowId;
+  await persistRuntimeState();
+  const group = await chrome.tabGroups.update(groupId, {
+    color: AUTOMATION_TAB_GROUP_COLOR,
+    title: CONTAINER_TAB_GROUP_TITLE[role],
+    collapsed: false,
+  });
+  updateOwnedSessionWindowForTabs(role, ids, group.windowId);
+  return { id: group.id, windowId: group.windowId, title: group.title };
 }
 
 async function ensureOwnedContainerGroup(
@@ -724,7 +757,7 @@ async function ensureOwnedContainerGroupUnlocked(
       canonical = await ensureCanonicalGroupTitle(role, canonical);
       canonical = await attachTabsToOwnedGroup(role, canonical, ids);
     } else if (fallbackWindowId !== null && ids.length > 0) {
-      canonical = await createOwnedGroupWithRollback(role, fallbackWindowId, ids);
+      canonical = await createOwnedGroup(role, fallbackWindowId, ids);
     }
 
     if (canonical) {
@@ -776,14 +809,14 @@ async function ensureOwnedContainerWindowUnlocked(
       const group = await ensureOwnedContainerGroup(role, container.windowId, []);
       if (group) {
         await focusOwnedWindowIfRequested(group.windowId, mode);
-        const initialTabId = await findReusableOwnedContainerTab(group.windowId);
+        const initialTabId = await findReusableOwnedContainerTab(group.windowId, group.id);
         return {
           windowId: group.windowId,
           initialTabId,
         };
       }
       await focusOwnedWindowIfRequested(container.windowId, mode);
-      const initialTabId = await findReusableOwnedContainerTab(container.windowId);
+      const initialTabId = await findReusableOwnedContainerTab(container.windowId, null);
       const createdGroup = await ensureOwnedContainerGroup(role, container.windowId, [initialTabId]);
       if (createdGroup) {
         return {
@@ -804,7 +837,7 @@ async function ensureOwnedContainerWindowUnlocked(
   const existingGroup = await ensureOwnedContainerGroup(role, null, []);
   if (existingGroup) {
     await focusOwnedWindowIfRequested(existingGroup.windowId, mode);
-    const initialTabId = await findReusableOwnedContainerTab(existingGroup.windowId);
+    const initialTabId = await findReusableOwnedContainerTab(existingGroup.windowId, existingGroup.id);
     await persistRuntimeState();
     return {
       windowId: existingGroup.windowId,
@@ -824,6 +857,11 @@ async function ensureOwnedContainerWindowUnlocked(
     type: 'normal',
   });
   container.windowId = win.id!;
+  // Persist windowId before any further awaits so a worker crash between
+  // `windows.create` returning and the subsequent `tabs.group` call still
+  // lets the next ensure cycle reuse this window instead of spawning a
+  // second owned window in `chrome.windows.create`.
+  await persistRuntimeState();
   console.log(`[opencli] Created owned ${role} window ${container.windowId} (start=${startUrl})`);
 
   // Wait for the initial tab to finish loading instead of a fixed 200ms sleep.
@@ -853,13 +891,23 @@ async function ensureOwnedContainerWindowUnlocked(
   return { windowId: group?.windowId ?? container.windowId, initialTabId };
 }
 
-async function findReusableOwnedContainerTab(windowId: number): Promise<number | undefined> {
+async function findReusableOwnedContainerTab(windowId: number, ownedGroupId?: number | null): Promise<number | undefined> {
   try {
     const tabs = await chrome.tabs.query({ windowId });
+    // When a canonical owned group lives in a user window (cross-window
+    // convergence can land it there), an http(s) tab outside the group is
+    // user content and must not be reused. Group members and non-http tabs
+    // (about:blank / data: / fresh container) stay eligible. A null group id
+    // means no ownership signal exists, so only non-http placeholders qualify.
     const reusable = tabs.find(tab =>
       tab.id !== undefined &&
       initialTabIsAvailable(tab.id) &&
-      isDebuggableUrl(tab.url),
+      isDebuggableUrl(tab.url) &&
+      (
+        ownedGroupId === undefined ||
+        (ownedGroupId !== null && tab.groupId === ownedGroupId) ||
+        !isSafeNavigationUrl(tab.url ?? '')
+      ),
     );
     return reusable?.id;
   } catch {
@@ -1321,13 +1369,18 @@ async function resolveTab(tabId: number | undefined, leaseKey: string, initialUr
   // Get (or create) the dedicated automation container
   const windowId = await getAutomationWindow(leaseKey, initialUrl);
 
-  // Prefer an existing debuggable tab
-  const tabs = await chrome.tabs.query({ windowId });
-  const debuggableTab = tabs.find(t => t.id && isDebuggableUrl(t.url));
-  if (debuggableTab?.id) return { tabId: debuggableTab.id, tab: debuggableTab };
+  const role = getOwnedWindowRole(leaseKey);
+  const group = existingSession?.owned ? await ensureOwnedContainerGroup(role, windowId, []) : null;
+  const scopedWindowId = group?.windowId ?? windowId;
+  const reusableTabId = await findReusableOwnedContainerTab(scopedWindowId, existingSession?.owned ? (group?.id ?? null) : undefined);
+  if (reusableTabId !== undefined) return { tabId: reusableTabId, tab: await chrome.tabs.get(reusableTabId) };
 
   // No debuggable tab — another extension may have hijacked the tab URL.
-  const reuseTab = tabs.find(t => t.id);
+  // Only recycle arbitrary tabs for legacy unscoped sessions. Owned sessions
+  // without a group signal must create a fresh tab rather than overwrite user
+  // content in a window where an OpenCLI group may have disappeared.
+  const tabs = await chrome.tabs.query({ windowId: scopedWindowId });
+  const reuseTab = existingSession?.owned ? undefined : tabs.find(t => t.id);
   if (reuseTab?.id) {
     await chrome.tabs.update(reuseTab.id, { url: BLANK_PAGE });
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -1341,9 +1394,9 @@ async function resolveTab(tabId: number | undefined, leaseKey: string, initialUr
   }
 
   // Fallback: create a new tab
-  const newTab = await chrome.tabs.create({ windowId, url: BLANK_PAGE, active: true });
+  const newTab = await chrome.tabs.create({ windowId: scopedWindowId, url: BLANK_PAGE, active: true });
   if (!newTab.id) throw new Error('Failed to create tab in automation container');
-  await ensureOwnedContainerGroup(getOwnedWindowRole(leaseKey), windowId, [newTab.id]);
+  await ensureOwnedContainerGroup(role, scopedWindowId, [newTab.id]);
   return { tabId: newTab.id, tab: await chrome.tabs.get(newTab.id) };
 }
 
