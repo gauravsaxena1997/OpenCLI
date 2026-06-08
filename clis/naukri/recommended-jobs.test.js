@@ -128,6 +128,34 @@ describe('naukri recommended-jobs adapter', () => {
     });
   });
 
+  it('builds a stable job URL when Naukri cards expose only data-job-id', () => {
+    const rows = parseRecommendedJobsPayload({
+      ...SAMPLE_PAYLOAD,
+      items: [
+        {
+          tab: 'Profile',
+          title: 'Mern Stack Developer',
+          company: 'Relevantz Technology Services',
+          location: 'Hybrid - Chennai',
+          experience: '3-5 Yrs',
+          salary: 'Not disclosed',
+          posted: 'Few Hours Ago',
+          description: 'Build MERN stack products across React and Node.js.',
+          job_id: '150526123456',
+          can_select: true,
+          source_url: 'https://www.naukri.com/mnjuser/recommendedjobs',
+          raw_text: 'Mern Stack Developer\nRelevantz Technology Services\n3-5 Yrs\nHybrid - Chennai\nNot disclosed\nFew Hours Ago\nSave\nHide',
+        },
+      ],
+    }, 10);
+
+    expect(rows[0]).toMatchObject({
+      title: 'Mern Stack Developer',
+      job_id: '150526123456',
+      job_url: 'https://www.naukri.com/job-listings-mern-stack-developer-relevantz-technology-services-hybrid-chennai-150526123456',
+    });
+  });
+
   it('applies limit per tab, not globally', () => {
     const rows = parseRecommendedJobsPayload(SAMPLE_PAYLOAD, 1);
     expect(rows.map((row) => `${row.tab}:${row.rank}:${row.title}`)).toEqual([
