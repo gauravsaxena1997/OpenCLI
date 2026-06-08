@@ -89,6 +89,25 @@ function extractJobId(value) {
   return trailingMatch ? trailingMatch[1] : '';
 }
 
+function slugifyJobUrlPart(value) {
+  return normalizeWhitespace(value)
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+}
+
+function buildJobUrlFromId(jobId, title, company, location) {
+  const id = normalizeWhitespace(jobId);
+  if (!/^\d{6,}$/.test(id)) return '';
+  const slug = [title, company, location]
+    .map(slugifyJobUrlPart)
+    .filter(Boolean)
+    .join('-') || 'naukri-job';
+  return `https://www.naukri.com/job-listings-${slug}-${id}`;
+}
+
 function parseLines(text) {
   return String(text ?? '')
     .split(/\n+/)
@@ -199,7 +218,8 @@ function normalizeRecommendedJob(raw, index) {
   const companyMeta = splitCompanyRatingReviews(splitCompanyAndRecruiter(raw?.company).company);
   const location = normalizeWhitespace(raw?.location) || firstMatching(lines, /remote|hybrid|onsite|on-site|india|bangalore|bengaluru|delhi|mumbai|hyderabad|pune|jaipur|gurugram|gurgaon|noida|chennai/i);
   const description = inferDescription(lines, raw?.description);
-  const jobUrl = normalizeUrl(raw?.job_url || raw?.url);
+  const rawJobId = normalizeWhitespace(raw?.job_id) || extractJobId(raw?.job_url || raw?.url || raw?.raw_text);
+  const jobUrl = normalizeUrl(raw?.job_url || raw?.url) || buildJobUrlFromId(rawJobId, title, company, location);
   const row = {
     tab: normalizeWhitespace(raw?.tab) || 'Recommended Jobs',
     rank: String(index + 1),
@@ -220,7 +240,7 @@ function normalizeRecommendedJob(raw, index) {
     is_selected: normalizeBoolean(raw?.is_selected),
     can_select: normalizeBoolean(raw?.can_select),
     job_url: jobUrl,
-    job_id: normalizeWhitespace(raw?.job_id) || extractJobId(jobUrl || raw?.raw_text),
+    job_id: rawJobId || extractJobId(jobUrl || raw?.raw_text),
     source_url: normalizeUrl(raw?.source_url),
     raw_text: normalizeWhitespace(lines.join(' ')).slice(0, 2000),
   };
@@ -291,6 +311,13 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
       const requested = requestedTabs.map((label) => alias(tabKey(label))).filter(Boolean);
       const includeTab = (label) => requested.length === 0 || requested.includes('all') || requested.includes(alias(tabKey(label)));
       const isJobHref = (href) => /naukri\\.com\\/.+job|job-listings|\\/jobs?\\//i.test(String(href || ''));
+      const slugify = (value) => clean(value).toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120);
+      const jobUrlFromId = (jobId, title, company, location) => {
+        const id = clean(jobId);
+        if (!/^\\d{6,}$/.test(id)) return '';
+        const slug = [title, company, location].map(slugify).filter(Boolean).join('-') || 'naukri-job';
+        return 'https://www.naukri.com/job-listings-' + slug + '-' + id;
+      };
       const tabElements = Array.from(document.querySelectorAll('.tab-wrapper, [role="tab"], button, a, li, div, span'))
         .filter(visible)
         .map((el) => ({ el, clickTarget: el.querySelector?.('.tab-list-item') || el, label: clean(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('title')) }))
@@ -327,6 +354,7 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
         const lines = rawText.split(/\\n+/).map(clean).filter(Boolean);
         const anchors = Array.from(card.querySelectorAll('a[href]'));
         const jobAnchor = anchors.find((a) => isJobHref(a.href));
+        const rawJobId = clean(card.getAttribute('data-job-id') || card.getAttribute('data-jobid') || card.dataset?.jobId || '');
         const titleAnchor = jobAnchor || anchors.find((a) => clean(a.innerText || a.textContent).length > 3);
         const title = clean(card.querySelector('a[href*="job-listings"], h1,h2,h3,[class*="title"],[class*="Title"]')?.innerText || titleAnchor?.innerText || lines[0] || '');
         const company = clean(card.querySelector('[class*="company"],[class*="Company"],[class*="comp"]')?.innerText || lines[1] || '');
@@ -365,8 +393,8 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
           apply_state: applyState,
           is_selected: selected,
           can_select: !!selectable,
-          job_url: jobAnchor?.href || '',
-          job_id: card.getAttribute('data-job-id') || card.getAttribute('data-jobid') || '',
+          job_url: jobAnchor?.href || jobUrlFromId(rawJobId, title, company, locationText),
+          job_id: rawJobId,
           source_url: window.location.href,
           raw_text: rawText,
         };
