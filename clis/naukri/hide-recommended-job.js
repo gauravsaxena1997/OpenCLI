@@ -82,9 +82,9 @@ function parseHideRecommendedJobResult(payload, expectedJobId, execute) {
   return [{
     status: execute ? 'hidden' : 'dry-run',
     job_id: jobId,
-    title: normalizeWhitespace(payload.title),
-    company: normalizeWhitespace(payload.company),
-    tab: normalizeWhitespace(payload.tab),
+    title: normalizeWhitespace(payload.payloadTitle || payload.title),
+    company: normalizeWhitespace(payload.payloadCompany || payload.company),
+    tab: normalizeWhitespace(payload.payloadTab || payload.tab),
     action: execute ? 'hide' : 'would-hide',
   }];
 }
@@ -138,16 +138,16 @@ function buildHideRecommendedJobScript({ jobId, title, company, tabs, execute })
           });
       };
       const readCard = (card, tab) => {
-        const rawText = clean(card.innerText || card.textContent);
-        const lines = rawText.split(/\\n+/).map(clean).filter(Boolean);
+        const rawBody = clean(card.innerText || card.textContent);
+        const lines = rawBody.split(/\\n+/).map(clean).filter(Boolean);
         const titleText = clean(card.querySelector('a[href*="job-listings"], h1,h2,h3,[class*="title"],[class*="Title"]')?.innerText || lines[0] || '');
         const companyText = clean(card.querySelector('[class*="company"],[class*="Company"],[class*="comp"]')?.innerText || lines[1] || '');
         return {
-          job_id: cardJobId(card),
-          title: titleText,
-          company: companyText,
-          tab: clean(tab).replace(/\\s*\\(\\d+\\)$/, ''),
-          raw_text: rawText,
+          payloadJobId: cardJobId(card),
+          payloadTitle: titleText,
+          payloadCompany: companyText,
+          payloadTab: clean(tab).replace(/\\s*\\(\\d+\\)$/, ''),
+          payloadBody: rawBody,
         };
       };
       const findHideButton = (card) => Array.from(card.querySelectorAll('button,a,[role="button"],span,div'))
@@ -161,12 +161,12 @@ function buildHideRecommendedJobScript({ jobId, title, company, tabs, execute })
       const findMatchedCard = () => {
         for (const card of candidateCards()) {
           const row = readCard(card, '');
-          if (row.job_id === expectedJobId && matchesGuards(row)) return card;
+          if (row.payloadJobId === expectedJobId && matchesGuards(row)) return card;
         }
         return null;
       };
       const matchesGuards = (row) => {
-        const haystack = clean([row.title, row.company, row.raw_text].join(' ')).toLowerCase();
+        const haystack = clean([row.payloadTitle, row.payloadCompany, row.payloadBody].join(' ')).toLowerCase();
         if (expectedTitle && !haystack.includes(expectedTitle)) return false;
         if (expectedCompany && !haystack.includes(expectedCompany)) return false;
         return true;
@@ -191,20 +191,20 @@ function buildHideRecommendedJobScript({ jobId, title, company, tabs, execute })
         }
         for (const card of candidateCards()) {
           const row = readCard(card, source.label);
-          if (row.job_id !== expectedJobId) continue;
+          if (row.payloadJobId !== expectedJobId) continue;
           if (!matchesGuards(row)) {
-            return { ok: false, error: 'guard_mismatch', ...row, url: location.href, title_text: document.title || '', text: document.body?.innerText?.slice(0, 5000) || '' };
+            return { ok: false, error: 'guard_mismatch', ...row, pageUrl: location.href, title_text: document.title || '', pageText: document.body?.innerText?.slice(0, 5000) || '' };
           }
           const hideButton = findHideButton(card);
-          if (!hideButton) return { ok: false, error: 'hide_button_not_found', ...row, url: location.href, title_text: document.title || '', text: document.body?.innerText?.slice(0, 5000) || '' };
+          if (!hideButton) return { ok: false, error: 'hide_button_not_found', ...row, pageUrl: location.href, title_text: document.title || '', pageText: document.body?.innerText?.slice(0, 5000) || '' };
           if (execute) {
             hideButton.setAttribute('data-opencli-hide-recommended-job-target', expectedJobId);
             hideButton.scrollIntoView({ block: 'center', inline: 'center' });
           }
-          return { ok: true, ...row, selector: '[data-opencli-hide-recommended-job-target="' + expectedJobId + '"]', url: location.href, title_text: document.title || '', text: document.body?.innerText?.slice(0, 5000) || '' };
+          return { ok: true, ...row, selector: '[data-opencli-hide-recommended-job-target="' + expectedJobId + '"]', pageUrl: location.href, title_text: document.title || '', pageText: document.body?.innerText?.slice(0, 5000) || '' };
         }
       }
-      return { ok: false, error: 'job_not_found', job_id: expectedJobId, url: location.href, title_text: document.title || '', text: document.body?.innerText?.slice(0, 5000) || '' };
+      return { ok: false, error: 'job_not_found', job_id: expectedJobId, pageUrl: location.href, title_text: document.title || '', pageText: document.body?.innerText?.slice(0, 5000) || '' };
     })()
   `;
 }
@@ -250,7 +250,7 @@ function buildVisibleTextAfterTabsScript(tabs) {
         }
         texts.push(clean(document.body?.innerText || ''));
       }
-      return { ok: true, url: location.href, title: document.title || '', text: texts.join(' ') };
+      return { ok: true, pageUrl: location.href, pageTitle: document.title || '', pageText: texts.join(' ') };
     })()
   `;
 }

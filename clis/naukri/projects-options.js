@@ -71,17 +71,17 @@ function buildProjectOptionsScript({ matchTitle, skillQuery, limit }) {
           await wait(250);
         }
         const optionRoot = form.querySelector('#ul_' + id) || form.querySelector('#dp_' + id) || document.querySelector('#ul_' + id) || document.querySelector('#dp_' + id) || root;
-        const options = Array.from((optionRoot || form).querySelectorAll('a, [role="option"], li'))
-          .map((el) => ({ value: clean(el.getAttribute('data-id') || el.id || ''), label: clean(el.innerText || el.textContent) }))
-          .filter((option) => option.label && !/DownArrow/i.test(option.label))
-          .sort((a, b) => Number(Boolean(b.value)) - Number(Boolean(a.value)));
+        const optionEntries = Array.from((optionRoot || form).querySelectorAll('a, [role="option"], li'))
+          .map((el) => ({ optionValue: clean(el.getAttribute('data-id') || el.id || ''), optionLabel: clean(el.innerText || el.textContent) }))
+          .filter((option) => option.optionLabel && !/DownArrow/i.test(option.optionLabel))
+          .sort((a, b) => Number(Boolean(b.optionValue)) - Number(Boolean(a.optionValue)));
         const seen = new Set();
         return {
-          id,
-          current: clean(input?.value || hidden?.value || ''),
-          hidden: clean(hidden?.value || ''),
-          options: options.filter((option) => {
-            const key = (option.value + '|' + option.label).toLowerCase();
+          dropdownId: id,
+          currentValue: clean(input?.value || hidden?.value || ''),
+          hiddenValue: clean(hidden?.value || ''),
+          optionEntries: optionEntries.filter((option) => {
+            const key = (option.optionValue + '|' + option.optionLabel).toLowerCase();
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
@@ -91,32 +91,32 @@ function buildProjectOptionsScript({ matchTitle, skillQuery, limit }) {
       const dropdownIds = Array.from(form.querySelectorAll('input[id$="For"]'))
         .map((input) => input.id.replace(/For$/, ''))
         .filter((id) => form.querySelector('#' + id) || form.querySelector('#hid_' + id));
-      const dropdowns = [];
+      const dropdownEntries = [];
       for (const id of dropdownIds) {
-        dropdowns.push(await readDropdown(id));
+        dropdownEntries.push(await readDropdown(id));
       }
-      const fields = Array.from(form.querySelectorAll('input,textarea,[contenteditable="true"]'))
+      const fieldEntries = Array.from(form.querySelectorAll('input,textarea,[contenteditable="true"]'))
         .map((el) => ({
-          id: clean(el.id),
-          name: clean(el.getAttribute('name')),
-          placeholder: clean(el.getAttribute('placeholder')),
-          value: clean(el.value || el.textContent),
-          type: clean(el.getAttribute('type') || el.tagName.toLowerCase()),
+          fieldId: clean(el.id),
+          fieldName: clean(el.getAttribute('name')),
+          fieldPlaceholder: clean(el.getAttribute('placeholder')),
+          fieldValue: clean(el.value || el.textContent),
+          fieldType: clean(el.getAttribute('type') || el.tagName.toLowerCase()),
         }))
-        .filter((field) => field.id || field.name || field.placeholder);
-      const choices = Array.from(form.querySelectorAll('input[type="radio"], input[type="checkbox"]'))
+        .filter((field) => field.fieldId || field.fieldName || field.fieldPlaceholder);
+      const choiceEntries = Array.from(form.querySelectorAll('input[type="radio"], input[type="checkbox"]'))
         .map((el) => {
           const label = form.querySelector('label[for="' + el.id + '"]');
           return {
-            id: clean(el.id),
-            name: clean(el.name),
-            value: clean(el.value),
-            label: clean(label?.innerText || label?.textContent || el.getAttribute('aria-label') || el.id),
-            checked: !!el.checked,
-            type: clean(el.type),
+            choiceId: clean(el.id),
+            choiceName: clean(el.name),
+            choiceValue: clean(el.value),
+            choiceLabel: clean(label?.innerText || label?.textContent || el.getAttribute('aria-label') || el.id),
+            choiceChecked: !!el.checked,
+            choiceType: clean(el.type),
           };
         })
-        .filter((choice) => choice.id || choice.name || choice.label);
+        .filter((choice) => choice.choiceId || choice.choiceName || choice.choiceLabel);
       let skillSuggestions = [];
       if (skillQuery) {
         const skillField = Array.from(form.querySelectorAll('input[type="text"],input:not([type])')).filter(visible)
@@ -144,7 +144,7 @@ function buildProjectOptionsScript({ matchTitle, skillQuery, limit }) {
       const cancel = Array.from(form.querySelectorAll('button,a,[role="button"],span')).filter(visible)
         .find((el) => /^(cancel|close|crosslayer|×|x)$/i.test(clean(el.innerText || el.textContent || el.getAttribute('aria-label'))));
       if (cancel) mouseSelect(cancel);
-      return { ok: true, dropdowns, fields, choices, skillSuggestions: skillSuggestions.slice(0, limit) };
+      return { ok: true, dropdownEntries, fieldEntries, choiceEntries, skillSuggestions: skillSuggestions.slice(0, limit) };
     })()
   `;
 }
@@ -177,20 +177,20 @@ cli({
       throw new CommandExecutionError(`Could not inspect Naukri project options: ${result?.error || 'project_options_failed'}`);
     }
     const rows = [];
-    for (const dropdown of result.dropdowns || []) {
-      if (!dropdown.options?.length) {
-        rows.push({ kind: 'dropdown', id: dropdown.id, current: dropdown.current || dropdown.hidden || '', value: '', label: '' });
+    for (const dropdown of result.dropdownEntries || []) {
+      if (!dropdown.optionEntries?.length) {
+        rows.push({ kind: 'dropdown', id: dropdown.dropdownId, current: dropdown.currentValue || dropdown.hiddenValue || '', value: '', label: '' });
         continue;
       }
-      for (const option of dropdown.options) {
-        rows.push({ kind: 'dropdown', id: dropdown.id, current: dropdown.current || dropdown.hidden || '', value: option.value || '', label: option.label || '' });
+      for (const option of dropdown.optionEntries) {
+        rows.push({ kind: 'dropdown', id: dropdown.dropdownId, current: dropdown.currentValue || dropdown.hiddenValue || '', value: option.optionValue || '', label: option.optionLabel || '' });
       }
     }
-    for (const choice of result.choices || []) {
-      rows.push({ kind: choice.type || 'choice', id: choice.name || choice.id, current: choice.checked ? 'selected' : '', value: choice.value || choice.id || '', label: choice.label || '' });
+    for (const choice of result.choiceEntries || []) {
+      rows.push({ kind: choice.choiceType || 'choice', id: choice.choiceName || choice.choiceId, current: choice.choiceChecked ? 'selected' : '', value: choice.choiceValue || choice.choiceId || '', label: choice.choiceLabel || '' });
     }
-    for (const field of result.fields || []) {
-      rows.push({ kind: 'field', id: field.id || field.name || '', current: field.value || '', value: field.type || '', label: field.placeholder || field.name || '' });
+    for (const field of result.fieldEntries || []) {
+      rows.push({ kind: 'field', id: field.fieldId || field.fieldName || '', current: field.fieldValue || '', value: field.fieldType || '', label: field.fieldPlaceholder || field.fieldName || '' });
     }
     for (const suggestion of result.skillSuggestions || []) {
       rows.push({ kind: 'skill-suggestion', id: 'skills', current: '', value: suggestion, label: suggestion });
