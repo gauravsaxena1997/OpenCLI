@@ -38,10 +38,6 @@ This file tracks the active OpenCLI branch set for the local fork workflow and t
 
 - `local/root`
   - Scope: local integration branch for combining validated fork work
-  - Source: created from `local/career-os-opencli-root`
-
-- `local/career-os-opencli-root`
-  - Scope: deprecated predecessor branch kept temporarily for transition safety
 
 ## Intended Steady State
 
@@ -57,7 +53,6 @@ This file tracks the active OpenCLI branch set for the local fork workflow and t
 1. Keep feature and PR-ready work on narrow branches.
 2. Merge validated branch heads into `local/root`.
 3. Use `local/root` as the local SSOT branch for Mac and VPS sync.
-4. Keep `local/career-os-opencli-root` only until all references are retired.
 
 ## Active Branches Right Now
 
