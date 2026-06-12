@@ -109,21 +109,21 @@ function stripNoise(value) {
 function splitCompanyAndRecruiter(value) {
   const text = normalizeWhitespace(value);
   const match = text.match(/^(.*?)\s+(posted by\s+.+)$/i);
-  if (!match) return { company: text, recruiter: '' };
+  if (!match) return { companyText: text, recruiterText: '' };
   return {
-    company: normalizeWhitespace(match[1]),
-    recruiter: normalizeWhitespace(match[2]),
+    companyText: normalizeWhitespace(match[1]),
+    recruiterText: normalizeWhitespace(match[2]),
   };
 }
 
 function splitCompanyRatingReviews(value) {
   const text = normalizeWhitespace(value);
   const match = text.match(/^(.*?)\s+(\d+(?:\.\d+)?)\s+(\d[\d,]*\s+reviews?)$/i);
-  if (!match) return { company: text, rating: '', reviews: '' };
+  if (!match) return { companyText: text, ratingText: '', reviewsText: '' };
   return {
-    company: normalizeWhitespace(match[1]),
-    rating: normalizeWhitespace(match[2]),
-    reviews: normalizeWhitespace(match[3]),
+    companyText: normalizeWhitespace(match[1]),
+    ratingText: normalizeWhitespace(match[2]),
+    reviewsText: normalizeWhitespace(match[3]),
   };
 }
 
@@ -139,8 +139,8 @@ function inferTitle(lines, explicitTitle) {
 
 function inferCompany(lines, explicitCompany, title) {
   const splitRecruiter = splitCompanyAndRecruiter(explicitCompany);
-  const splitRating = splitCompanyRatingReviews(splitRecruiter.company);
-  if (splitRating.company) return splitRating.company;
+  const splitRating = splitCompanyRatingReviews(splitRecruiter.companyText);
+  if (splitRating.companyText) return splitRating.companyText;
   const titleIndex = lines.findIndex((line) => line === title);
   const candidates = lines.slice(titleIndex >= 0 ? titleIndex + 1 : 1);
   return candidates.find((line) => {
@@ -156,7 +156,7 @@ function inferRecruiter(lines, rawText, explicitRecruiter, explicitCompany) {
   const recruiter = normalizeWhitespace(explicitRecruiter);
   if (recruiter) return recruiter;
   const split = splitCompanyAndRecruiter(explicitCompany);
-  if (split.recruiter) return split.recruiter;
+  if (split.recruiterText) return split.recruiterText;
   const line = firstMatching(lines, /^posted by\b/i);
   if (line) return line;
   const match = normalizeWhitespace(rawText).match(/\bposted by\s+([A-Za-z0-9][A-Za-z0-9 .,&'()-]{1,80})/i);
@@ -211,9 +211,9 @@ function normalizeRecommendedJob(raw, index) {
     posted: normalizeWhitespace(raw?.posted) || firstMatching(lines, /posted|today|few hours ago|just now|\d+\s+(?:day|days|hour|hours|week|weeks|month|months)\s+ago/i),
     description,
     skills: Array.isArray(raw?.skills) ? raw.skills.map(normalizeWhitespace).filter(Boolean).join(', ') : normalizeWhitespace(raw?.skills || raw?.tags),
-    recruiter_or_posted_by: inferRecruiter(lines, raw?.raw_text || raw?.text, raw?.recruiter_or_posted_by, raw?.company),
-    company_rating: normalizeWhitespace(raw?.company_rating) || companyMeta.rating || firstMatching(lines, /^\d+(?:\.\d+)?$/),
-    reviews_count: normalizeWhitespace(raw?.reviews_count) || companyMeta.reviews || firstMatching(lines, /^\d[\d,]*\s+reviews?$/i),
+    recruiter_or_posted_by: inferRecruiter(lines, raw?.raw_text || raw?.pageText, raw?.recruiter_or_posted_by, raw?.company),
+    company_rating: normalizeWhitespace(raw?.company_rating) || companyMeta.ratingText || firstMatching(lines, /^\d+(?:\.\d+)?$/),
+    reviews_count: normalizeWhitespace(raw?.reviews_count) || companyMeta.reviewsText || firstMatching(lines, /^\d[\d,]*\s+reviews?$/i),
     work_mode: normalizeWhitespace(raw?.work_mode) || inferWorkMode(location),
     notice_period_signal: normalizeWhitespace(raw?.notice_period_signal) || inferNoticePeriod(lines, description),
     apply_state: normalizeWhitespace(raw?.apply_state) || firstMatching(lines, /applied|apply|saved|save|hide|not interested|viewed/i),
@@ -244,7 +244,7 @@ export function parseRecommendedJobsPayload(payload, limitPerTab = 25) {
   if (looksLikeNaukriAuthWall(payload)) {
     throw new AuthRequiredError('naukri.com', 'Open https://www.naukri.com in the connected browser and sign in, then retry.');
   }
-  const items = Array.isArray(payload.items) ? payload.items : [];
+  const items = Array.isArray(payload.entries) ? payload.entries : Array.isArray(payload.items) ? payload.items : [];
   const counts = new Map();
   const rows = [];
   for (const item of items) {
@@ -330,9 +330,9 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
         const titleAnchor = jobAnchor || anchors.find((a) => clean(a.innerText || a.textContent).length > 3);
         const title = clean(card.querySelector('a[href*="job-listings"], h1,h2,h3,[class*="title"],[class*="Title"]')?.innerText || titleAnchor?.innerText || lines[0] || '');
         const company = clean(card.querySelector('[class*="company"],[class*="Company"],[class*="comp"]')?.innerText || lines[1] || '');
-        const postedBy = lines.find((line) => /^posted by\\b/i.test(line)) || '';
-        const rating = lines.find((line) => /^\\d+(?:\\.\\d+)?$/.test(line)) || '';
-        const reviews = lines.find((line) => /^\\d[\\d,]*\\s+reviews?$/i.test(line)) || '';
+        const recruiterOrPostedBy = lines.find((line) => /^posted by\\b/i.test(line)) || '';
+        const companyRating = lines.find((line) => /^\\d+(?:\\.\\d+)?$/.test(line)) || '';
+        const reviewsCount = lines.find((line) => /^\\d[\\d,]*\\s+reviews?$/i.test(line)) || '';
         const metaLine = lines.find((line) => /yrs?|lacs?|not disclosed|remote|hybrid|on-site|onsite/i.test(line)) || '';
         const experience = clean(card.querySelector('[class*="experience"],[class*="Experience"],[class*="exp"]')?.innerText || (metaLine.match(/\\b\\d+\\s*-\\s*\\d+\\s*(?:yrs?|years?)\\b|\\b\\d+\\s*(?:yrs?|years?)\\b/i)?.[0] || ''));
         const salary = clean(card.querySelector('[class*="salary"],[class*="Salary"],[class*="sal"]')?.innerText || (metaLine.match(/(?:₹\\s*)?\\d+(?:\\.\\d+)?\\s*-\\s*\\d+(?:\\.\\d+)?\\s*Lacs?\\s*PA|not disclosed|₹[^\\n]+/i)?.[0] || ''));
@@ -341,7 +341,7 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
         const skillTexts = Array.from(card.querySelectorAll('[class*="skill"],[class*="tag"],[class*="chip"],[class*="label"]'))
           .map((el) => clean(el.innerText || el.textContent))
           .filter((text) => text && text.length <= 80 && !/save|hide|review|posted/i.test(text));
-        const description = lines.find((line) => line.length > 35 && ![title, company, postedBy, rating, reviews, metaLine].includes(line) && !/^(save|hide)$/i.test(line)) || '';
+        const description = lines.find((line) => line.length > 35 && ![title, company, recruiterOrPostedBy, companyRating, reviewsCount, metaLine].includes(line) && !/^(save|hide)$/i.test(line)) || '';
         const selectable = card.querySelector('.tuple-check-box, [class*="checkbox"], [class*="check-box"], input[type="checkbox"], [role="checkbox"]');
         const selected = selectable ? /checked|selected/i.test(String(selectable.className || '') + ' ' + (selectable.getAttribute('aria-checked') || '')) || selectable.checked === true : false;
         const applyState = Array.from(card.querySelectorAll('button,a,[role="button"],span,div'))
@@ -357,9 +357,9 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
           posted,
           description,
           skills: skillTexts,
-          recruiter_or_posted_by: postedBy,
-          company_rating: rating,
-          reviews_count: reviews,
+          recruiter_or_posted_by: recruiterOrPostedBy,
+          company_rating: companyRating,
+          reviews_count: reviewsCount,
           work_mode: (locationText.match(/\\b(remote|hybrid|on-site|onsite)\\b/i)?.[1] || ''),
           notice_period_signal: (rawText.match(/(?:notice period|joining|joiner|immediate|serving notice|available to join)[^.;,]{0,90}/i)?.[0] || ''),
           apply_state: applyState,
@@ -398,11 +398,11 @@ function buildRecommendedJobsExtractionScript(tabs, limitPerTab) {
         }
       }
       return {
-        url: location.href,
-        title: document.title || '',
-        text: document.body ? (document.body.innerText || '').slice(0, 5000) : '',
-        tabs: tabElements.map((item) => item.label),
-        items,
+        pageUrl: location.href,
+        pageTitle: document.title || '',
+        pageText: document.body ? (document.body.innerText || '').slice(0, 5000) : '',
+        tabList: tabElements.map((item) => item.label),
+        entries: items,
       };
     })()
   `;

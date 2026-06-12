@@ -131,15 +131,15 @@ function buildAddCurrentEmploymentScript(row) {
         if (!skillField) break;
         setValue(skillField, skill);
         await wait(700);
-        const options = Array.from(document.querySelectorAll('[role="option"], [class*="suggest"] li, [class*="Suggest"] li, .Sdrop li, ul li')).filter(visible)
-          .map((el) => ({ el, text: clean(el.innerText || el.textContent) }))
-          .filter((option) => option.text && option.text.length <= 120);
+        const suggestionNodes = Array.from(document.querySelectorAll('[role="option"], [class*="suggest"] li, [class*="Suggest"] li, .Sdrop li, ul li')).filter(visible)
+          .map((el) => ({ node: el, labelText: clean(el.innerText || el.textContent) }))
+          .filter((option) => option.labelText && option.labelText.length <= 120);
         const comparable = (value) => clean(value).toLowerCase().replace(/[^a-z0-9]+/g, '');
-        const choice = options.find((option) => comparable(option.text) === comparable(skill))
-          || options.find((option) => comparable(option.text).includes(comparable(skill)) || comparable(skill).includes(comparable(option.text)));
+        const choice = suggestionNodes.find((option) => comparable(option.labelText) === comparable(skill))
+          || suggestionNodes.find((option) => comparable(option.labelText).includes(comparable(skill)) || comparable(skill).includes(comparable(option.labelText)));
         if (choice) {
-          mouseSelect(choice.el.closest('li') || choice.el);
-          mouseSelect(choice.el);
+          mouseSelect(choice.node.closest('li') || choice.node);
+          mouseSelect(choice.node);
           await wait(350);
         }
       }
