@@ -1,6 +1,6 @@
-# Local Branch Track
+# Local Root README
 
-This file tracks the intended active OpenCLI branch set for the local fork workflow.
+This file tracks the active OpenCLI branch set for the local fork workflow and the purpose of the `local/root` integration branch.
 
 ## Active Branches
 
@@ -36,9 +36,12 @@ This file tracks the intended active OpenCLI branch set for the local fork workf
 
 ### Local integration branch
 
-- `local/career-os-opencli-root`
+- `local/root`
   - Scope: local integration branch for combining validated fork work
-  - Planned rename: `local/root`
+  - Source: created from `local/career-os-opencli-root`
+
+- `local/career-os-opencli-root`
+  - Scope: deprecated predecessor branch kept temporarily for transition safety
 
 ## Intended Steady State
 
@@ -49,10 +52,19 @@ This file tracks the intended active OpenCLI branch set for the local fork workf
 - Two Naukri branches
 - One local integration root branch
 
-## Pending Root Rename
+## Current Local Root Workflow
 
-When the branch layout is stable:
+1. Keep feature and PR-ready work on narrow branches.
+2. Merge validated branch heads into `local/root`.
+3. Use `local/root` as the local SSOT branch for Mac and VPS sync.
+4. Keep `local/career-os-opencli-root` only until all references are retired.
 
-1. Create `local/root` from `local/career-os-opencli-root`
-2. Update the OpenCLI local skill and any VPS/local sync docs that reference the old name
-3. Deprecate `local/career-os-opencli-root`
+## Active Branches Right Now
+
+- `feat/linkedin-enhancements`
+- `feat/twitter-enhancements`
+- `feat/opencli-instagram-user-full-urls`
+- `feat/wellfound-adapter`
+- `feat/naukri-enhancements`
+- `feat/naukri-profile-read`
+- `local/root`
